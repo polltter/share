@@ -8,8 +8,8 @@ We have implemented GitLab Flow - Environment Branches. If you don't know what I
 - https://www.youtube.com/watch?v=K5Ux_m0ccuo
 - https://www.youtube.com/watch?v=xfFwQiu86O8
 
-Basically, **for each issue a new branch must be created**. After all changes and commits are done, **a merge request must be created**.
+Basically, **for each issue we must __Create a merge request and branch__.** After all changes and commits are done, remove **Draft: ** from the merge request title.
 
-When creating the merge request, **select Luis Coutinho in the Assignees and Reviewers fields**. The other fields, leave them with the default values.
+In the **Reviewer** field you must choose **Luis**.
 
 A little tip: `git pull --prune` « use this command to remove from you local repository all deleted branches.
