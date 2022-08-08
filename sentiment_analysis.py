@@ -6,6 +6,8 @@ from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import textacy
 from textblob import TextBlob
 
+from transformers import pipeline
+
 
 def load_tweets(language='en'):
     """Returns data frame with tweets and additional information like tweet id, language, date of creation, 
@@ -58,11 +60,12 @@ def vader_sent(df, threshold_pos=0.05, threshold_neg=-0.05):
     df_vader = df.copy()
     df_vader['scores'] = df_vader['text'].map(lambda tweet: sid.polarity_scores(tweet))
     df_vader['compound']  = df_vader['scores'].map(lambda score_dict: score_dict['compound'])
-    df_vader['comp_label'] = df_vader['compound'].map(lambda comp: 'pos' if comp >= threshold_pos else ('neg' if comp <= threshold_neg else 'neu'))
+    df_vader['label'] = df_vader['compound'].map(lambda comp: 'pos' if comp >= threshold_pos else ('neg' if comp <= threshold_neg else 'neu'))
 
     return(df_vader)
 
 #print(vader_sent(load_tweets()))
+#print(vader_sent(load_tweets())['label'].value_counts())
 
 
 def tblob_sent(df, threshold_pos=0.05, threshold_neg=-0.05):
@@ -98,3 +101,32 @@ def tblob_sent(df, threshold_pos=0.05, threshold_neg=-0.05):
     return(df_tblob)
 
 #print(tblob_sent(load_tweets()))
+#print(tblob_sent(load_tweets())['label'].value_counts())
+
+
+def ml_sent(df, model="cardiffnlp/twitter-roberta-base-sentiment-latest"):
+    """Returns data frame with sentiment, top_sentiment, score
+    and sentiment label ('pos', 'neu' or 'neg') for each text.
+
+    :param df: Data frame to pass as input
+    :type df: DataFrame
+    :param model: model for sentiment analysis, defaults to "cardiffnlp/twitter-roberta-base-sentiment-latest"
+    :type model: str, optional
+    :return: A data frame with sentiment analysis results
+    :rtype: DataFrame
+    """
+    df_ml = df.copy()
+
+    classifier = pipeline("sentiment-analysis", model)
+    sentiment_analysis = classifier(df_ml['text'].tolist(), top_k=3) # top_k=3 to get the scores for all the possible labels
+
+    df_ml['sentiment'] = pd.Series(sentiment_analysis)
+    df_ml['top_sentiment'] = df_ml['sentiment'].map(lambda sentiment: max(sentiment, key=lambda x: x['score'])) # top sentiment
+    df_ml['score'] = df_ml['top_sentiment'].map(lambda x: x['score']) # top score
+    df_ml['label'] = df_ml['top_sentiment'].map(lambda x: x['label']) # top label
+    df_ml['label'] = df_ml['label'].map(lambda x: 'pos' if x == 'Positive' else ('neg' if x == 'Negative' else 'neu'))
+
+    return df_ml
+
+#print(ml_sent(load_tweets()))
+#print(ml_sent(load_tweets())['label'].value_counts())
