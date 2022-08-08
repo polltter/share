@@ -17,6 +17,9 @@ random.seed(42)
 
 from collections import Counter
 
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud
+
 
 def load_tweets(language='en'):
     """Returns data frame with tweets and additional information like tweet id, language, date of creation, 
@@ -211,3 +214,50 @@ def clean_kw():
     return kw_weights_clean
 
 #print(clean_kw())
+
+
+def wordcloud(word_freq, title=None, max_words=50, additional_stopwords=None):
+    """Plots wordcloud based on term frequency/weight.
+
+    :param word_freq: Series/dict with term frequency/weight
+    :type word_freq: Series | dict
+    :param title: Plot title, defaults to None
+    :type title: str, optional
+    :param max_words: Maximum number of words to plot, defaults to 50
+    :type max_words: int, optional
+    :param additional_stopwords: Additional words to exclude, defaults to None
+    :type additional_stopwords: list, optional
+    """
+    wc = WordCloud(width=800, height=400, 
+                   background_color= "black", colormap="viridis", 
+                   max_font_size=150, max_words=max_words)
+    
+    # convert series into dict
+    if type(word_freq) == pd.Series:
+        counter = Counter(word_freq.fillna(0).to_dict())
+    else:
+        counter = word_freq
+
+    # remove additional stop words from frequency counter
+    if additional_stopwords is not None:
+        counter = {token: freq for (token, freq) in counter.items() 
+                   if token not in additional_stopwords}
+        
+    wc.generate_from_frequencies(counter)
+    
+    plt.title(title, fontsize=16)
+
+    plt.imshow(wc, interpolation='bilinear')
+    plt.axis("off")
+    plt.show()
+
+
+if __name__ == '__main__':
+
+    # wordcloud with term frequency
+    wordcloud(compute_freq(load_tweets())['freq'])
+    
+    # wordcloud with term weights (textrank)
+    wordcloud(clean_kw())
+
+    print('Success!')
