@@ -17,7 +17,8 @@ def get_client():
     return client
 
 
-mongo_client=pymongo.MongoClient('mongodb://localhost:27017/')
+#mongo_client=pymongo.MongoClient('mongodb://localhost:27017/')
+mongo_client=pymongo.MongoClient('mongodb://mongo:27017/')
 
 def get_search_words(company):
     """Gets list of words of interest, defined by each company,
