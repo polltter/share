@@ -1,4 +1,5 @@
-import config
+#import config
+import os
 
 import pymongo
 
@@ -11,7 +12,8 @@ from datetime import datetime, timedelta
 
 def get_client():
     """Returns Twitter API v2 Client object."""
-    client = tweepy.Client(bearer_token=config.BEARER_TOKEN)
+    #client = tweepy.Client(bearer_token=config.BEARER_TOKEN)
+    client = tweepy.Client(bearer_token=os.environ.get('TWITTER_TOKEN'))
     return client
 
 
