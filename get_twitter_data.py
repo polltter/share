@@ -29,7 +29,8 @@ def get_search_words(company):
     :return: A list of words
     :rtype: list
     """
-    db = mongo_client['rep_analysis_test'] # database rep_analysis_test
+    #db = mongo_client['rep_analysis_test'] # database rep_analysis_test
+    db = mongo_client['central'] # database central
     search_words = db['search_words'] # collection search_words
 
     my_query = {"company": company}
