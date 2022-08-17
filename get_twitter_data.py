@@ -91,7 +91,8 @@ def get_tweets_mongo(company, start_time=None, end_time=None, max_results=100):
     """
     client = get_client()
 
-    db = mongo_client['rep_analysis_test'] # database rep_analysis_test
+    #db = mongo_client['rep_analysis_test'] # database rep_analysis_test
+    db = mongo_client['central'] # database central
     keywords = db['keywords'] # collection keywords
 
     for word in get_search_words(company):
