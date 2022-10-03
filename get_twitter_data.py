@@ -31,11 +31,11 @@ def get_search_words(company):
     """
     #db = mongo_client['rep_analysis_test'] # database rep_analysis_test
     db = mongo_client['central'] # database central
-    search_words = db['search_words'] # collection search_words
+    client_info = db['client_info'] # collection client_info
 
-    my_query = {"company": company}
-    for words in search_words.find(my_query, {"_id": 0, "company": 0}):
-        return words['words']
+    my_query = {"company_name": company}
+    for client in client_info.find(my_query):
+        return client['search_terms']
 
 
 def get_tweets(query, start_time=None, end_time=None, max_results=100):
@@ -93,10 +93,11 @@ def get_tweets_mongo(company, start_time=None, end_time=None, max_results=100):
 
     #db = mongo_client['rep_analysis_test'] # database rep_analysis_test
     db = mongo_client['central'] # database central
-    keywords = db['keywords'] # collection keywords
+    data_twitter = db['data_twitter'] # collection data_twitter
 
     for word in get_search_words(company):
         query = word + " -is:retweet lang:en"
+        search_word_dict = {'search_word': word}
 
         start = time.time()
             
@@ -111,7 +112,8 @@ def get_tweets_mongo(company, start_time=None, end_time=None, max_results=100):
             print(tweet.id)
             end = time.time()
             print(str((end - start)/60) + " minutes")
-            keywords.insert_one(tweet.data) # the data attribute of each tweet is a dictionary
+            data = {**tweet.data, **search_word_dict} # the data attribute of each tweet is a dictionary
+            data_twitter.insert_one(data)
 
 
 if __name__ == '__main__':
@@ -128,9 +130,19 @@ if __name__ == '__main__':
     """
 
     # test for Vodafone and a time interval of 10 minutes
+    """
     start_time=(datetime.today()-timedelta(days=1)).strftime('%Y-%m-%d') + 'T23:00:00Z' # yesterday at 23:00:00
     end_time=(datetime.today()-timedelta(days=1)).strftime('%Y-%m-%d') + 'T23:30:00Z' # yesterday at 23:10:00
 
     get_tweets_mongo(company="Vodafone", start_time=start_time, end_time=end_time)
+
+    print('Success!')
+    """
+
+    # test for McDonald's and a time interval of 10 minutes
+    start_time=(datetime.today()-timedelta(days=1)).strftime('%Y-%m-%d') + 'T23:00:00Z' # yesterday at 23:00:00
+    end_time=(datetime.today()-timedelta(days=1)).strftime('%Y-%m-%d') + 'T23:30:00Z' # yesterday at 23:10:00
+
+    get_tweets_mongo(company="McDonald's", start_time=start_time, end_time=end_time)
 
     print('Success!')
