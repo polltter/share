@@ -1,3 +1,5 @@
+import pymongo
+
 import json
 import pandas as pd
 
@@ -46,12 +48,48 @@ def load_tweets(language='en'):
 
     df.drop('public_metrics', axis=1, inplace=True)
 
-    df_en = df[df['lang'] == language].copy()
+    df_final = df[df['lang'] == language].copy()
 
-    return df_en
+    return df_final
 
 #print(load_tweets().head())
 #print(load_tweets()['lang'].value_counts())
+
+
+mongo_client=pymongo.MongoClient('mongodb://localhost:27017/')
+#mongo_client=pymongo.MongoClient('mongodb://root:root@mongo:27017/')
+
+def load_tweets_mongo(language='en'):
+    """Returns data frame with tweets and additional information like tweet id, language, date of creation, 
+    number of retweets, number of replies, number of likes, number of quotes and search word.
+
+    :param language: Language, defaults to 'en' (english)
+    :type language: str, optional
+    :return: A data frame with tweets and related info
+    :rtype: DataFrame
+    """
+    db = mongo_client['rep_analysis_new'] # database rep_analysis_new
+    #db = mongo_client['central'] # database central
+    data_twitter = db['data_twitter'] # collection data_twitter
+
+    #my_query = {"created_at": {"$gt": "2022-09-26T23:29:00.000Z"}}
+    #cursor = data_twitter.find(my_query)
+    cursor = data_twitter.find() # we will use all the tweets for now
+    df = pd.DataFrame(list(cursor))
+
+    df['retweets'] = df['public_metrics'].map(lambda x: x['retweet_count'])
+    df['replies'] = df['public_metrics'].map(lambda x: x['reply_count'])
+    df['likes'] = df['public_metrics'].map(lambda x: x['like_count'])
+    df['quotes'] = df['public_metrics'].map(lambda x: x['quote_count'])
+
+    df.drop('public_metrics', axis=1, inplace=True)
+
+    df_final = df[df['lang'] == language].copy()
+
+    return df_final
+
+#print(load_tweets_mongo().head())
+#print(load_tweets_mongo()['lang'].value_counts())
 
 
 def tokens_nopunct(text):
@@ -255,9 +293,9 @@ def wordcloud(word_freq, title=None, max_words=50, additional_stopwords=None):
 if __name__ == '__main__':
 
     # wordcloud with term frequency
-    wordcloud(compute_freq(load_tweets())['freq'])
+    #wordcloud(compute_freq(load_tweets())['freq'])
     
     # wordcloud with term weights (textrank)
-    wordcloud(clean_kw())
+    #wordcloud(clean_kw())
 
     print('Success!')
