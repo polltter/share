@@ -4,6 +4,7 @@ import json
 import pandas as pd
 
 import nltk
+nltk.download('stopwords')
 from nltk.tokenize import TweetTokenizer
 import string
 
@@ -112,7 +113,6 @@ def tokens_nopunct(text):
 #print(tokens_nopunct(load_tweets()['text'][3]))
 
 
-# nltk.download('stopwords')
 def stopwords(language='english'):
     """Returns list of stop words.
 
