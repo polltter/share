@@ -56,8 +56,8 @@ def load_tweets(language='en'):
 #print(load_tweets()['lang'].value_counts())
 
 
-mongo_client=pymongo.MongoClient('mongodb://localhost:27017/')
-#mongo_client=pymongo.MongoClient('mongodb://root:root@mongo:27017/')
+#mongo_client=pymongo.MongoClient('mongodb://localhost:27017/')
+mongo_client=pymongo.MongoClient('mongodb://root:root@mongo:27017/')
 
 def load_tweets_mongo(language='en'):
     """Returns data frame with tweets and additional information like tweet id, language, date of creation, 
@@ -68,8 +68,8 @@ def load_tweets_mongo(language='en'):
     :return: A data frame with tweets and related info
     :rtype: DataFrame
     """
-    db = mongo_client['rep_analysis_new'] # database rep_analysis_new
-    #db = mongo_client['central'] # database central
+    #db = mongo_client['rep_analysis_new'] # database rep_analysis_new
+    db = mongo_client['central'] # database central
     data_twitter = db['data_twitter'] # collection data_twitter
 
     #my_query = {"created_at": {"$gt": "2022-09-26T23:29:00.000Z"}}
@@ -170,6 +170,7 @@ def compute_freq(df, tokenizer=tokens_nopunct, stop_words=stopwords(), n_min=1, 
     return df_freq
 
 #print(compute_freq(load_tweets()))
+#print(compute_freq(load_tweets_mongo()))
 
 
 def kw_in_context(df, kw):
@@ -213,7 +214,7 @@ def extract_kw():
     :return: A dictionary with keyword-weight pairs
     :rtype: dict
     """
-    corpus = textacy.Corpus("en_core_web_sm", load_tweets()['text'])
+    corpus = textacy.Corpus("en_core_web_sm", load_tweets_mongo()['text'])
     #print(corpus)
 
     kw_weights = Counter()
@@ -290,6 +291,33 @@ def wordcloud(word_freq, title=None, max_words=50, additional_stopwords=None):
     plt.show()
 
 
+def get_keywords(word_freq, additional_stopwords=None):
+    """Saves terms and respective frequency or weight in a MongoDB database.
+
+    :param word_freq: Series/dict with term frequency/weight
+    :type word_freq: Series | dict
+    :param additional_stopwords: Additional words to exclude, defaults to None
+    :type additional_stopwords: list, optional
+    """
+    # convert series into dict
+    if type(word_freq) == pd.Series:
+        counter = Counter(word_freq.fillna(0).to_dict())
+    else:
+        #counter = word_freq
+        counter = dict(Counter(word_freq).most_common()) # most_common() sorts the counter by value in descending order
+
+    # remove additional stop words from frequency counter
+    if additional_stopwords is not None:
+        counter = {token: freq for (token, freq) in counter.items() 
+                   if token not in additional_stopwords}
+    
+    #db = mongo_client['rep_analysis_new'] # database rep_analysis_new
+    db = mongo_client['central'] # database central
+    kw_freq_weight = db['kw_freq_weight'] # collection kw_freq_weight
+
+    kw_freq_weight.insert_one(counter)
+
+
 if __name__ == '__main__':
 
     # wordcloud with term frequency
@@ -297,5 +325,11 @@ if __name__ == '__main__':
     
     # wordcloud with term weights (textrank)
     #wordcloud(clean_kw())
+
+    # keywords with term frequency
+    #get_keywords(compute_freq(load_tweets_mongo())['freq'])
+
+    # keywords with term weights (textrank)
+    get_keywords(clean_kw())
 
     print('Success!')
