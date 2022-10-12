@@ -1,3 +1,5 @@
+import pymongo
+
 import json
 import pandas as pd
 
@@ -34,14 +36,50 @@ def load_tweets(language='en'):
 
     df.drop('public_metrics', axis=1, inplace=True)
 
-    df_en = df[df['lang'] == language].copy()
+    df_final = df[df['lang'] == language].copy()
 
-    return df_en
+    return df_final
 
 #print(load_tweets().head())
 #print(load_tweets()['lang'].value_counts())
 
 
+mongo_client=pymongo.MongoClient('mongodb://localhost:27017/')
+#mongo_client=pymongo.MongoClient('mongodb://root:root@mongo:27017/')
+
+def load_tweets_mongo(language='en'):
+    """Returns data frame with tweets and additional information like tweet id, language, date of creation, 
+    number of retweets, number of replies, number of likes and number of quotes.
+
+    :param language: Language, defaults to 'en' (english)
+    :type language: str, optional
+    :return: A data frame with tweets and related info
+    :rtype: DataFrame
+    """
+    db = mongo_client['rep_analysis_new'] # database rep_analysis_new
+    #db = mongo_client['central'] # database central
+    data_twitter = db['data_twitter'] # collection data_twitter
+
+    #my_query = {"created_at": {"$gt": "2022-09-26T23:29:00.000Z"}}
+    #cursor = data_twitter.find(my_query)
+    cursor = data_twitter.find() # we will use all the tweets for now
+    df = pd.DataFrame(list(cursor))
+
+    df['retweets'] = df['public_metrics'].map(lambda x: x['retweet_count'])
+    df['replies'] = df['public_metrics'].map(lambda x: x['reply_count'])
+    df['likes'] = df['public_metrics'].map(lambda x: x['like_count'])
+    df['quotes'] = df['public_metrics'].map(lambda x: x['quote_count'])
+
+    df.drop('public_metrics', axis=1, inplace=True)
+
+    df_final = df[df['lang'] == language].copy()
+
+    return df_final
+
+#print(load_tweets_mongo().head())
+#print(load_tweets_mongo()['lang'].value_counts())
+
+  
 def vader_sent(df, threshold_pos=0.05, threshold_neg=-0.05):
     """Returns data frame with scores, compound score
     and sentiment label ('pos', 'neu' or 'neg') for each text.
@@ -130,3 +168,28 @@ def ml_sent(df, model="cardiffnlp/twitter-roberta-base-sentiment-latest"):
 
 #print(ml_sent(load_tweets()))
 #print(ml_sent(load_tweets())['label'].value_counts())
+
+
+def get_sentiment(df):
+
+    # convert dataframe into a list of dictionaries
+    df_dict = df.to_dict(orient='records') # we get a list where each element corresponds to a row of the dataframe
+
+    db = mongo_client['rep_analysis_new'] # database rep_analysis_new
+    #db = mongo_client['central'] # database central
+    sentiment = db['sentiment'] # collection sentiment
+
+    sentiment.insert_many(df_dict)
+
+
+if __name__ == '__main__':
+
+    # sentiment analysis with data from MongoDB
+    #print(vader_sent(load_tweets_mongo())['label'].value_counts()) # vader
+    #print(tblob_sent(load_tweets_mongo())['label'].value_counts()) # textblob
+    #print(ml_sent(load_tweets_mongo())['label'].value_counts()) # ml model
+
+    # save sentiment analysis (VADER) results to a MongoDB database
+    get_sentiment(vader_sent(load_tweets_mongo()))
+
+    print('Success!')
