@@ -56,7 +56,7 @@ def load_tweets_mongo(language='en'):
     :return: A data frame with tweets and related info
     :rtype: DataFrame
     """
-    db = mongo_client['rep_analysis_new'] # database rep_analysis_new
+    db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     #db = mongo_client['central'] # database central
     data_twitter = db['data_twitter'] # collection data_twitter
 
@@ -171,11 +171,15 @@ def ml_sent(df, model="cardiffnlp/twitter-roberta-base-sentiment-latest"):
 
 
 def get_sentiment(df):
+    """Saves sentiment analysis results in a MongoDB database.
 
+    :param df: Data frame to pass as input
+    :type df: DataFrame
+    """
     # convert dataframe into a list of dictionaries
     df_dict = df.to_dict(orient='records') # we get a list where each element corresponds to a row of the dataframe
 
-    db = mongo_client['rep_analysis_new'] # database rep_analysis_new
+    db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     #db = mongo_client['central'] # database central
     sentiment = db['sentiment'] # collection sentiment
 
