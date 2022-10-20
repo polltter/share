@@ -58,11 +58,12 @@ def load_tweets_mongo(language='en'):
     """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     #db = mongo_client['central'] # database central
-    data_twitter = db['data_twitter'] # collection data_twitter
+    #data_twitter = db['data_twitter'] # collection data_twitter
+    data_twitter = db['data_test'] # collection data_test
 
-    #my_query = {"created_at": {"$gt": "2022-09-26T23:29:00.000Z"}}
-    #cursor = data_twitter.find(my_query)
-    cursor = data_twitter.find() # we will use all the tweets for now
+    my_query = {"extracted_at": {"$eq": "2022-10-19"}}
+    cursor = data_twitter.find(my_query)
+    #cursor = data_twitter.find() # we will use all the tweets for now
     df = pd.DataFrame(list(cursor))
 
     df['retweets'] = df['public_metrics'].map(lambda x: x['retweet_count'])
@@ -181,7 +182,8 @@ def get_sentiment(df):
 
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     #db = mongo_client['central'] # database central
-    sentiment = db['sentiment'] # collection sentiment
+    #sentiment = db['sentiment'] # collection sentiment
+    sentiment = db['sentiment_test'] # collection sentiment_test
 
     sentiment.insert_many(df_dict)
 
