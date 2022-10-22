@@ -10,6 +10,8 @@ from textblob import TextBlob
 
 from transformers import pipeline
 
+from datetime import datetime
+
 
 def load_tweets(language='en'):
     """Returns data frame with tweets and additional information like tweet id, language, date of creation, 
@@ -188,6 +190,34 @@ def get_sentiment(df):
     sentiment.insert_many(df_dict)
 
 
+def agg_sentiment_daily(date):
+
+    db = mongo_client['rep_analysis_main'] # database rep_analysis_main
+    sentiment = db['sentiment_test'] # collection sentiment_test
+    sentiment_daily_main = db['sentiment_daily_main'] # collection sentiment_daily_main
+
+    # number of positive tweets
+    my_query = {"$and": [{"extracted_at": {"$eq": date}}, {"label": "pos"}]}
+    n_pos = sentiment.count_documents(my_query)
+
+    # number of negative tweets
+    my_query = {"$and": [{"extracted_at": {"$eq": date}}, {"label": "neg"}]}
+    n_neg = sentiment.count_documents(my_query)
+
+    # number of neutral tweets
+    my_query = {"$and": [{"extracted_at": {"$eq": date}}, {"label": "neu"}]}
+    n_neu = sentiment.count_documents(my_query)
+
+    dt = datetime.strptime(date, "%Y-%m-%d")
+    # date_ymw is a tuple with the form (date, year, month, week)
+    date_ymw = (date, dt.strftime("%Y"), dt.strftime("%m"), dt.strftime("%U"))
+
+    doc = {"extracted_at": date_ymw[0], "year": date_ymw[1], "month": date_ymw[2], "week_of_year": date_ymw[3],
+           "positive_count": n_pos, "negative_count": n_neg, "neutral_count": n_neu}
+    
+    sentiment_daily_main.insert_one(doc)
+
+
 if __name__ == '__main__':
 
     # sentiment analysis with data from MongoDB
@@ -196,6 +226,9 @@ if __name__ == '__main__':
     #print(ml_sent(load_tweets_mongo())['label'].value_counts()) # ml model
 
     # save sentiment analysis (VADER) results to a MongoDB database
-    get_sentiment(vader_sent(load_tweets_mongo()))
+    #get_sentiment(vader_sent(load_tweets_mongo()))
+
+    # aggregate sentiment analysis results (daily)
+    agg_sentiment_daily("2022-09-29")
 
     print('Success!')
