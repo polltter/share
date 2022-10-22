@@ -191,7 +191,11 @@ def get_sentiment(df):
 
 
 def agg_sentiment_daily(date):
+    """_summary_
 
+    :param date: _description_
+    :type date: _type_
+    """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     sentiment = db['sentiment_test'] # collection sentiment_test
     sentiment_daily_main = db['sentiment_daily_main'] # collection sentiment_daily_main
@@ -218,6 +222,30 @@ def agg_sentiment_daily(date):
     sentiment_daily_main.insert_one(doc)
 
 
+def agg_sentiment_weekly(week):
+    """_summary_
+
+    :param week: _description_
+    :type week: _type_
+    """
+    db = mongo_client['rep_analysis_main'] # database rep_analysis_main
+    sentiment_daily_main = db['sentiment_daily_main'] # collection sentiment_daily_main
+    sentiment_weekly_main = db['sentiment_weekly_main'] # collection sentiment_weekly_main
+
+    cursor = sentiment_daily_main.aggregate([
+        {"$match": {"week_of_year": week}}, 
+        {"$group": {"_id": { "year_week": ["$year", "$week_of_year"]}, 
+                    "total_positive_count": {"$sum": "$positive_count"}, 
+                    "total_negative_count": {"$sum": "$negative_count"}, 
+                    "total_neutral_count": {"$sum": "$neutral_count"},
+                    "total_number_of_days": {"$sum": 1}} # field just to control if we have results for 7 days (one full week)
+        }
+    ])
+
+    for x in cursor:
+        sentiment_weekly_main.insert_one(x)
+
+
 if __name__ == '__main__':
 
     # sentiment analysis with data from MongoDB
@@ -229,6 +257,9 @@ if __name__ == '__main__':
     #get_sentiment(vader_sent(load_tweets_mongo()))
 
     # aggregate sentiment analysis results (daily)
-    agg_sentiment_daily("2022-09-29")
+    #agg_sentiment_daily("2022-10-19")
+
+    # aggregate sentiment analysis results (weekly)
+    agg_sentiment_weekly("42")
 
     print('Success!')
