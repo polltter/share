@@ -246,6 +246,33 @@ def agg_sentiment_weekly(week):
         sentiment_weekly_main.insert_one(x)
 
 
+def agg_sentiment_monthly(month, year):
+    """_summary_
+
+    :param month: _description_
+    :type month: _type_
+    :param year: _description_
+    :type year: _type_
+    """
+    db = mongo_client['rep_analysis_main'] # database rep_analysis_main
+    sentiment_daily_main = db['sentiment_daily_main'] # collection sentiment_daily_main
+    sentiment_monthly_main = db['sentiment_monthly_main'] # collection sentiment_monthly_main
+
+    cursor = sentiment_daily_main.aggregate([
+        {"$match": {"month": month}}, 
+        {"$group": {"_id": { "year_month": ["$year", "$month"]}, 
+                    "total_positive_count": {"$sum": "$positive_count"}, 
+                    "total_negative_count": {"$sum": "$negative_count"}, 
+                    "total_neutral_count": {"$sum": "$neutral_count"},
+                    "total_number_of_days": {"$sum": 1}}}, # field just to control if we have results for 30/31 days (one full month)
+        {"$addFields": {"year": year}
+        } # field added to make the yearly aggregation easier
+    ])
+
+    for x in cursor:
+        sentiment_monthly_main.insert_one(x)
+
+
 if __name__ == '__main__':
 
     # sentiment analysis with data from MongoDB
@@ -260,6 +287,9 @@ if __name__ == '__main__':
     #agg_sentiment_daily("2022-10-19")
 
     # aggregate sentiment analysis results (weekly)
-    agg_sentiment_weekly("42")
+    #agg_sentiment_weekly("42")
+
+    # aggregate sentiment analysis results (monthly)
+    agg_sentiment_monthly("10", "2022")
 
     print('Success!')
