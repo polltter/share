@@ -151,7 +151,7 @@ def ml_sent(df, model="cardiffnlp/twitter-roberta-base-sentiment-latest"):
 
     :param df: Data frame to pass as input
     :type df: DataFrame
-    :param model: model for sentiment analysis, defaults to "cardiffnlp/twitter-roberta-base-sentiment-latest"
+    :param model: Model for sentiment analysis, defaults to "cardiffnlp/twitter-roberta-base-sentiment-latest"
     :type model: str, optional
     :return: A data frame with sentiment analysis results
     :rtype: DataFrame
@@ -191,10 +191,10 @@ def get_sentiment(df):
 
 
 def agg_sentiment_daily(date):
-    """_summary_
+    """Aggregates sentiment analysis results on a daily basis.
 
-    :param date: _description_
-    :type date: _type_
+    :param date: Date ("yyyy-mm-dd") of aggregation
+    :type date: string
     """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     sentiment = db['sentiment_test'] # collection sentiment_test
@@ -223,10 +223,10 @@ def agg_sentiment_daily(date):
 
 
 def agg_sentiment_weekly(week):
-    """_summary_
+    """Aggregates sentiment analysis results on a weekly basis.
 
-    :param week: _description_
-    :type week: _type_
+    :param week: Week of aggregation
+    :type week: string
     """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     sentiment_daily_main = db['sentiment_daily_main'] # collection sentiment_daily_main
@@ -247,12 +247,12 @@ def agg_sentiment_weekly(week):
 
 
 def agg_sentiment_monthly(month, year):
-    """_summary_
+    """Aggregates sentiment analysis results on a monthly basis.
 
-    :param month: _description_
-    :type month: _type_
-    :param year: _description_
-    :type year: _type_
+    :param month: Month of aggregation
+    :type month: string
+    :param year: Year of aggregation
+    :type year: string
     """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     sentiment_daily_main = db['sentiment_daily_main'] # collection sentiment_daily_main
@@ -274,7 +274,11 @@ def agg_sentiment_monthly(month, year):
 
 
 def agg_sentiment_yearly(year):
+    """Aggregates sentiment analysis results on a yearly basis.
 
+    :param year: Year of aggregation
+    :type year: string
+    """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     sentiment_monthly_main = db['sentiment_monthly_main'] # collection sentiment_monthly_main
     sentiment_yearly_main = db['sentiment_yearly_main'] # collection sentiment_yearly_main
