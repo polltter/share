@@ -4,7 +4,7 @@ import json
 import pandas as pd
 
 import nltk
-nltk.download('stopwords')
+#nltk.download('stopwords')
 from nltk.tokenize import TweetTokenizer
 import string
 
@@ -22,6 +22,8 @@ from collections import Counter
 
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
+
+from datetime import datetime
 
 
 def load_tweets(language='en'):
@@ -57,8 +59,11 @@ def load_tweets(language='en'):
 #print(load_tweets()['lang'].value_counts())
 
 
-#mongo_client=pymongo.MongoClient('mongodb://localhost:27017/')
-mongo_client=pymongo.MongoClient('mongodb://root:root@mongo:27017/')
+mongo_client=pymongo.MongoClient('mongodb://localhost:27017/')
+#mongo_client=pymongo.MongoClient('mongodb://root:root@mongo:27017/')
+
+# this date will be the day before the one we are currently in because we are doing this everyday
+extracted_at = "2022-10-19"
 
 def load_tweets_mongo(language='en'):
     """Returns data frame with tweets and additional information like tweet id, language, date of creation, 
@@ -69,13 +74,14 @@ def load_tweets_mongo(language='en'):
     :return: A data frame with tweets and related info
     :rtype: DataFrame
     """
-    #db = mongo_client['rep_analysis_new'] # database rep_analysis_new
-    db = mongo_client['central'] # database central
-    data_twitter = db['data_twitter'] # collection data_twitter
+    db = mongo_client['rep_analysis_main'] # database rep_analysis_main
+    #db = mongo_client['central'] # database central
+    #data_twitter = db['data_twitter'] # collection data_twitter
+    data_twitter = db['data_test'] # collection data_test
 
-    #my_query = {"created_at": {"$gt": "2022-09-26T23:29:00.000Z"}}
-    #cursor = data_twitter.find(my_query)
-    cursor = data_twitter.find() # we will use all the tweets for now
+    my_query = {"extracted_at": {"$eq": extracted_at}} # this date will be the day before the one we are currently in because we are doing this everyday
+    cursor = data_twitter.find(my_query)
+    #cursor = data_twitter.find() # we will use all the tweets for now
     df = pd.DataFrame(list(cursor))
 
     df['retweets'] = df['public_metrics'].map(lambda x: x['retweet_count'])
@@ -304,18 +310,41 @@ def get_keywords(word_freq, additional_stopwords=None):
         counter = Counter(word_freq.fillna(0).to_dict())
     else:
         #counter = word_freq
-        counter = dict(Counter(word_freq).most_common()) # most_common() sorts the counter by value in descending order
+        counter = dict(Counter(word_freq).most_common()) # most_common(n) sorts the most common n elements by value in descending order
 
     # remove additional stop words from frequency counter
     if additional_stopwords is not None:
         counter = {token: freq for (token, freq) in counter.items() 
                    if token not in additional_stopwords}
     
-    #db = mongo_client['rep_analysis_new'] # database rep_analysis_new
-    db = mongo_client['central'] # database central
-    kw_freq_weight = db['kw_freq_weight'] # collection kw_freq_weight
+    db = mongo_client['rep_analysis_main'] # database rep_analysis_main
+    #db = mongo_client['central'] # database central
+    #kw_freq_weight = db['kw_freq_weight'] # collection kw_freq_weight
+    kw_freq_weight = db['kw_freq_weight_test'] # collection kw_freq_weight_test
 
-    kw_freq_weight.insert_one(counter)
+    kw_freq_weight.insert_one({"kw_weights": counter, "extracted_at": extracted_at})
+    # extracted_at will be the day before the one we are currently in because we are doing this everyday
+
+
+def agg_kw_daily(date):
+
+    db = mongo_client['rep_analysis_main'] # database rep_analysis_main
+    kw_freq_weight = db['kw_freq_weight_test'] # collection kw_freq_weight_test
+    kw_daily_main = db['kw_daily_main'] # collection kw_daily_main
+
+    my_query = {"extracted_at": {"$eq": date}}
+    cursor = kw_freq_weight.find(my_query)
+
+    kw_weights = list(cursor)[0]['kw_weights']
+
+    dt = datetime.strptime(date, "%Y-%m-%d")
+    # date_ymw is a tuple with the form (date, year, month, week)
+    date_ymw = (date, dt.strftime("%Y"), dt.strftime("%m"), dt.strftime("%U"))
+
+    doc = {"extracted_at": date_ymw[0], "year": date_ymw[1], "month": date_ymw[2], "week_of_year": date_ymw[3],
+           "kw_weights": kw_weights}
+
+    kw_daily_main.insert_one(doc)
 
 
 if __name__ == '__main__':
@@ -330,6 +359,9 @@ if __name__ == '__main__':
     #get_keywords(compute_freq(load_tweets_mongo())['freq'])
 
     # keywords with term weights (textrank)
-    get_keywords(clean_kw())
+    #get_keywords(clean_kw())
+
+    # aggregate keyword extraction results (daily)
+    agg_kw_daily("2022-10-19")
 
     print('Success!')
