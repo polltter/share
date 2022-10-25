@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 
 from datetime import datetime
+from collections import defaultdict
 
 
 def load_tweets(language='en'):
@@ -327,7 +328,11 @@ def get_keywords(word_freq, additional_stopwords=None):
 
 
 def agg_kw_daily(date):
+    """_summary_
 
+    :param date: _description_
+    :type date: _type_
+    """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     kw_freq_weight = db['kw_freq_weight_test'] # collection kw_freq_weight_test
     kw_daily_main = db['kw_daily_main'] # collection kw_daily_main
@@ -347,6 +352,37 @@ def agg_kw_daily(date):
     kw_daily_main.insert_one(doc)
 
 
+def agg_kw_weekly(week):
+    """_summary_
+
+    :param week: _description_
+    :type week: _type_
+    """
+    db = mongo_client['rep_analysis_main'] # database rep_analysis_main
+    kw_daily_main = db['kw_daily_main'] # collection kw_daily_main
+    kw_weekly_main = db['kw_weekly_main'] # collection kw_weekly_main'
+    
+    my_query = {"week_of_year": {"$eq": week}}
+    temp_dict = defaultdict(list)
+
+    for doc in kw_daily_main.find(my_query):
+        for k, v in doc['kw_weights'].items():
+            temp_dict[k].append(v)
+        
+    mean_dict = {}
+
+    for k, v in temp_dict.items():
+        mean_dict[k] = sum(value for value in v) / len(v)
+    
+    year = list(kw_daily_main.find(my_query))[0]['year']
+    id_dict = {'_id': {'year_week': [year, week]}}
+    kw_dict = {'kw_weights': mean_dict}
+    
+    weekly_dict = {**id_dict, **kw_dict}
+    
+    kw_weekly_main.insert_one(weekly_dict)
+
+
 if __name__ == '__main__':
 
     # wordcloud with term frequency
@@ -362,6 +398,9 @@ if __name__ == '__main__':
     #get_keywords(clean_kw())
 
     # aggregate keyword extraction results (daily)
-    agg_kw_daily("2022-10-19")
+    #agg_kw_daily("2022-10-19")
+
+    # aggregate keyword extraction results (weekly)
+    agg_kw_weekly("42")
 
     print('Success!')
