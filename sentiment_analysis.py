@@ -273,6 +273,26 @@ def agg_sentiment_monthly(month, year):
         sentiment_monthly_main.insert_one(x)
 
 
+def agg_sentiment_yearly(year):
+
+    db = mongo_client['rep_analysis_main'] # database rep_analysis_main
+    sentiment_monthly_main = db['sentiment_monthly_main'] # collection sentiment_monthly_main
+    sentiment_yearly_main = db['sentiment_yearly_main'] # collection sentiment_yearly_main
+
+    cursor = sentiment_monthly_main.aggregate([
+        {"$match": {"year": year}}, 
+        {"$group": {"_id": {"year": "$year"}, 
+                    "total_positive_count": {"$sum": "$total_positive_count"}, 
+                    "total_negative_count": {"$sum": "$total_negative_count"}, 
+                    "total_neutral_count": {"$sum": "$total_neutral_count"},
+                    "total_number_of_months": {"$sum": 1}} # field just to control if we have results for 12 months (one full year)
+        }
+    ])
+
+    for x in cursor:
+        sentiment_yearly_main.insert_one(x)
+
+
 if __name__ == '__main__':
 
     # sentiment analysis with data from MongoDB
@@ -290,6 +310,9 @@ if __name__ == '__main__':
     #agg_sentiment_weekly("42")
 
     # aggregate sentiment analysis results (monthly)
-    agg_sentiment_monthly("10", "2022")
+    #agg_sentiment_monthly("10", "2022")
+
+    # aggregate sentiment analysis results (yearly)
+    agg_sentiment_yearly("2022")
 
     print('Success!')
