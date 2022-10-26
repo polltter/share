@@ -360,7 +360,7 @@ def agg_kw_weekly(week):
     """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     kw_daily_main = db['kw_daily_main'] # collection kw_daily_main
-    kw_weekly_main = db['kw_weekly_main'] # collection kw_weekly_main'
+    kw_weekly_main = db['kw_weekly_main'] # collection kw_weekly_main
     
     my_query = {"week_of_year": {"$eq": week}}
     temp_dict = defaultdict(list)
@@ -384,10 +384,16 @@ def agg_kw_weekly(week):
 
 
 def agg_kw_monthly(month, year):
+    """_summary_
 
+    :param month: _description_
+    :type month: _type_
+    :param year: _description_
+    :type year: _type_
+    """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     kw_daily_main = db['kw_daily_main'] # collection kw_daily_main
-    kw_monthly_main = db['kw_monthly_main'] # collection kw_monthly_main'
+    kw_monthly_main = db['kw_monthly_main'] # collection kw_monthly_main
     
     my_query = {"month": {"$eq": month}}
     temp_dict = defaultdict(list)
@@ -407,6 +413,36 @@ def agg_kw_monthly(month, year):
     monthly_dict = {**id_dict, **kw_dict}
     
     kw_monthly_main.insert_one(monthly_dict)
+
+
+def agg_kw_yearly(year):
+    """_summary_
+
+    :param year: _description_
+    :type year: _type_
+    """
+    db = mongo_client['rep_analysis_main'] # database rep_analysis_main
+    kw_monthly_main = db['kw_monthly_main'] # collection kw_monthly_main
+    kw_yearly_main = db['kw_yearly_main'] # collection kw_yearly_main
+    
+    my_query = {"year": {"$eq": year}}
+    temp_dict = defaultdict(list)
+
+    for doc in kw_monthly_main.find(my_query):
+        for k, v in doc['kw_weights'].items():
+            temp_dict[k].append(v)
+        
+    mean_dict = {}
+
+    for k, v in temp_dict.items():
+        mean_dict[k] = sum(value for value in v) / len(v)
+    
+    id_dict = {'_id': {'year': year}}
+    kw_dict = {'kw_weights': mean_dict}
+    
+    yearly_dict = {**id_dict, **kw_dict}
+    
+    kw_yearly_main.insert_one(yearly_dict)
 
 
 if __name__ == '__main__':
@@ -430,6 +466,9 @@ if __name__ == '__main__':
     #agg_kw_weekly("42")
 
     # aggregate keyword extraction results (monthly)
-    agg_kw_monthly("10", "2022")
+    #agg_kw_monthly("10", "2022")
+
+    # aggregate keyword extraction results (yearly)
+    agg_kw_yearly("2022")
 
     print('Success!')
