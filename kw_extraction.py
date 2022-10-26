@@ -383,6 +383,32 @@ def agg_kw_weekly(week):
     kw_weekly_main.insert_one(weekly_dict)
 
 
+def agg_kw_monthly(month, year):
+
+    db = mongo_client['rep_analysis_main'] # database rep_analysis_main
+    kw_daily_main = db['kw_daily_main'] # collection kw_daily_main
+    kw_monthly_main = db['kw_monthly_main'] # collection kw_monthly_main'
+    
+    my_query = {"month": {"$eq": month}}
+    temp_dict = defaultdict(list)
+
+    for doc in kw_daily_main.find(my_query):
+        for k, v in doc['kw_weights'].items():
+            temp_dict[k].append(v)
+        
+    mean_dict = {}
+
+    for k, v in temp_dict.items():
+        mean_dict[k] = sum(value for value in v) / len(v)
+    
+    id_dict = {'_id': {'year_month': [year, month]}}
+    kw_dict = {'kw_weights': mean_dict, 'year': year}
+    
+    monthly_dict = {**id_dict, **kw_dict}
+    
+    kw_monthly_main.insert_one(monthly_dict)
+
+
 if __name__ == '__main__':
 
     # wordcloud with term frequency
@@ -401,6 +427,9 @@ if __name__ == '__main__':
     #agg_kw_daily("2022-10-19")
 
     # aggregate keyword extraction results (weekly)
-    agg_kw_weekly("42")
+    #agg_kw_weekly("42")
+
+    # aggregate keyword extraction results (monthly)
+    agg_kw_monthly("10", "2022")
 
     print('Success!')
