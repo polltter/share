@@ -49,10 +49,12 @@ def load_tweets(language='en'):
 mongo_client=pymongo.MongoClient('mongodb://localhost:27017/')
 #mongo_client=pymongo.MongoClient('mongodb://root:root@mongo:27017/')
 
-def load_tweets_mongo(language='en'):
+def load_tweets_mongo(date, language='en'):
     """Returns data frame with tweets and additional information like tweet id, language, date of creation, 
     number of retweets, number of replies, number of likes and number of quotes.
 
+    :param date: Date ("yyyy-mm-dd") when the tweets were extracted
+    :type date: str
     :param language: Language, defaults to 'en' (english)
     :type language: str, optional
     :return: A data frame with tweets and related info
@@ -63,7 +65,7 @@ def load_tweets_mongo(language='en'):
     #data_twitter = db['data_twitter'] # collection data_twitter
     data_twitter = db['data_test'] # collection data_test
 
-    my_query = {"extracted_at": {"$eq": "2022-10-19"}}
+    my_query = {"extracted_at": {"$eq": date}}
     cursor = data_twitter.find(my_query)
     #cursor = data_twitter.find() # we will use all the tweets for now
     df = pd.DataFrame(list(cursor))
@@ -79,7 +81,8 @@ def load_tweets_mongo(language='en'):
 
     return df_final
 
-#print(load_tweets_mongo().head())
+#print(load_tweets_mongo("2022-09-29").head())
+#print(load_tweets_mongo("2022-09-29")['extracted_at'].head())
 #print(load_tweets_mongo()['lang'].value_counts())
 
   
@@ -317,6 +320,6 @@ if __name__ == '__main__':
     #agg_sentiment_monthly("10", "2022")
 
     # aggregate sentiment analysis results (yearly)
-    agg_sentiment_yearly("2022")
+    #agg_sentiment_yearly("2022")
 
     print('Success!')

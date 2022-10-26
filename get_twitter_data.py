@@ -91,13 +91,17 @@ def get_tweets_mongo(company, start_time=None, end_time=None, max_results=100):
     """
     client = get_client()
 
-    #db = mongo_client['rep_analysis_test'] # database rep_analysis_test
+    #db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     db = mongo_client['central'] # database central
     data_twitter = db['data_twitter'] # collection data_twitter
+    #data_twitter = db['data_twitter_test_extracted_at'] # test collection
 
     for word in get_search_words(company):
         query = word + " -is:retweet lang:en"
+
         search_word_dict = {'search_word': word}
+        date = datetime.utcnow().strftime('%Y-%m-%d')
+        extracted_at_dict = {'extracted_at': date}
 
         start = time.time()
             
@@ -112,7 +116,7 @@ def get_tweets_mongo(company, start_time=None, end_time=None, max_results=100):
             print(tweet.id)
             end = time.time()
             print(str((end - start)/60) + " minutes")
-            data = {**tweet.data, **search_word_dict} # the data attribute of each tweet is a dictionary
+            data = {**tweet.data, **search_word_dict, **extracted_at_dict} # the data attribute of each tweet is a dictionary
             data_twitter.insert_one(data)
 
 

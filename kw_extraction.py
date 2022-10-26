@@ -23,7 +23,7 @@ from collections import Counter
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import defaultdict
 
 
@@ -64,12 +64,14 @@ mongo_client=pymongo.MongoClient('mongodb://localhost:27017/')
 #mongo_client=pymongo.MongoClient('mongodb://root:root@mongo:27017/')
 
 # this date will be the day before the one we are currently in because we are doing this everyday
-extracted_at = "2022-10-19"
+#extracted_at = "2022-10-19"
 
-def load_tweets_mongo(language='en'):
+def load_tweets_mongo(date, language='en'):
     """Returns data frame with tweets and additional information like tweet id, language, date of creation, 
     number of retweets, number of replies, number of likes, number of quotes and search word.
 
+    :param date: Date ("yyyy-mm-dd") when the tweets were extracted
+    :type date: str
     :param language: Language, defaults to 'en' (english)
     :type language: str, optional
     :return: A data frame with tweets and related info
@@ -80,7 +82,7 @@ def load_tweets_mongo(language='en'):
     #data_twitter = db['data_twitter'] # collection data_twitter
     data_twitter = db['data_test'] # collection data_test
 
-    my_query = {"extracted_at": {"$eq": extracted_at}} # this date will be the day before the one we are currently in because we are doing this everyday
+    my_query = {"extracted_at": {"$eq": date}} # this date will be the day before the one we are currently in because we are doing this everyday
     cursor = data_twitter.find(my_query)
     #cursor = data_twitter.find() # we will use all the tweets for now
     df = pd.DataFrame(list(cursor))
@@ -96,7 +98,8 @@ def load_tweets_mongo(language='en'):
 
     return df_final
 
-#print(load_tweets_mongo().head())
+#print(load_tweets_mongo("2022-09-29").head())
+#print(load_tweets_mongo("2022-09-29")['extracted_at'].head())
 #print(load_tweets_mongo()['lang'].value_counts())
 
 
@@ -221,7 +224,9 @@ def extract_kw():
     :return: A dictionary with keyword-weight pairs
     :rtype: dict
     """
-    corpus = textacy.Corpus("en_core_web_sm", load_tweets_mongo()['text'])
+    yesterday = (datetime.utcnow()-timedelta(days=1)).strftime('%Y-%m-%d')
+    #yesterday = "2022-09-29"
+    corpus = textacy.Corpus("en_core_web_sm", load_tweets_mongo(yesterday)['text'])
     #print(corpus)
 
     kw_weights = Counter()
@@ -323,6 +328,7 @@ def get_keywords(word_freq, additional_stopwords=None):
     #kw_freq_weight = db['kw_freq_weight'] # collection kw_freq_weight
     kw_freq_weight = db['kw_freq_weight_test'] # collection kw_freq_weight_test
 
+    extracted_at = (datetime.utcnow()-timedelta(days=1)).strftime('%Y-%m-%d')
     kw_freq_weight.insert_one({"kw_weights": counter, "extracted_at": extracted_at})
     # extracted_at will be the day before the one we are currently in because we are doing this everyday
 
@@ -457,7 +463,7 @@ if __name__ == '__main__':
     #get_keywords(compute_freq(load_tweets_mongo())['freq'])
 
     # keywords with term weights (textrank)
-    #get_keywords(clean_kw())
+    get_keywords(clean_kw())
 
     # aggregate keyword extraction results (daily)
     #agg_kw_daily("2022-10-19")
@@ -469,6 +475,6 @@ if __name__ == '__main__':
     #agg_kw_monthly("10", "2022")
 
     # aggregate keyword extraction results (yearly)
-    agg_kw_yearly("2022")
+    #agg_kw_yearly("2022")
 
     print('Success!')
