@@ -328,10 +328,10 @@ def get_keywords(word_freq, additional_stopwords=None):
 
 
 def agg_kw_daily(date):
-    """_summary_
+    """Aggregates keyword extraction results on a daily basis.
 
-    :param date: _description_
-    :type date: _type_
+    :param date: Date ("yyyy-mm-dd") of aggregation
+    :type date: string
     """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     kw_freq_weight = db['kw_freq_weight_test'] # collection kw_freq_weight_test
@@ -353,10 +353,10 @@ def agg_kw_daily(date):
 
 
 def agg_kw_weekly(week):
-    """_summary_
+    """Aggregates keyword extraction results on a weekly basis.
 
-    :param week: _description_
-    :type week: _type_
+    :param week: Week of aggregation
+    :type week: string
     """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     kw_daily_main = db['kw_daily_main'] # collection kw_daily_main
@@ -384,12 +384,12 @@ def agg_kw_weekly(week):
 
 
 def agg_kw_monthly(month, year):
-    """_summary_
+    """Aggregates keyword extraction results on a monthly basis.
 
-    :param month: _description_
-    :type month: _type_
-    :param year: _description_
-    :type year: _type_
+    :param month: Month of aggregation
+    :type month: string
+    :param year: Year of aggregation
+    :type year: string
     """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     kw_daily_main = db['kw_daily_main'] # collection kw_daily_main
@@ -416,10 +416,10 @@ def agg_kw_monthly(month, year):
 
 
 def agg_kw_yearly(year):
-    """_summary_
+    """Aggregates keyword extraction results on a yearly basis.
 
-    :param year: _description_
-    :type year: _type_
+    :param year: Year of aggregation
+    :type year: string
     """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     kw_monthly_main = db['kw_monthly_main'] # collection kw_monthly_main
