@@ -5,6 +5,8 @@ import pandas as pd
 #import textacy
 import textacy.resources
 
+from datetime import datetime
+
 
 mongo_client=pymongo.MongoClient('mongodb://localhost:27017/')
 #mongo_client=pymongo.MongoClient('mongodb://root:root@mongo:27017/')
@@ -77,15 +79,84 @@ def get_emotions(df):
 
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     #db = mongo_client['central'] # database central
-    #emotions = db['sentiment'] # collection emotion
+    #emotions = db['emotions'] # collection emotions
     emotions = db['emotions_test'] # collection emotions_test
 
     emotions.insert_many(df_dict)
 
 
+def agg_emotions_daily(date):
+
+    db = mongo_client['rep_analysis_main'] # database rep_analysis_main
+    emotions = db['emotions_test'] # collection emotions_test
+    emotions_daily_main = db['emotions_daily_main'] # collection emotions_daily_main
+
+    # total number of tweets with emotions extracted for a specific date
+    n_total = emotions.count_documents({"extracted_at": {"$eq": date}})
+
+    # number of tweets where emotion AMUSED is the top1, top2 or top3 emotion
+    my_query = {"$and": [{"extracted_at": {"$eq": date}}, {"$or": [{"top1_mood": "AMUSED"}, {"top2_mood": "AMUSED"}, {"top3_mood": "AMUSED"}]}]}
+    n_amused = emotions.count_documents(my_query)
+    percent_amused = round(n_amused/n_total, 2)
+
+    # number of tweets where emotion AFRAID is the top1, top2 or top3 emotion
+    my_query = {"$and": [{"extracted_at": {"$eq": date}}, {"$or": [{"top1_mood": "AFRAID"}, {"top2_mood": "AFRAID"}, {"top3_mood": "AFRAID"}]}]}
+    n_afraid = emotions.count_documents(my_query)
+    percent_afraid = round(n_afraid/n_total, 2)
+
+    # number of tweets where emotion ANGRY is the top1, top2 or top3 emotion
+    my_query = {"$and": [{"extracted_at": {"$eq": date}}, {"$or": [{"top1_mood": "ANGRY"}, {"top2_mood": "ANGRY"}, {"top3_mood": "ANGRY"}]}]}
+    n_angry = emotions.count_documents(my_query)
+    percent_angry = round(n_angry/n_total, 2)
+
+    # number of tweets where emotion ANNOYED is the top1, top2 or top3 emotion
+    my_query = {"$and": [{"extracted_at": {"$eq": date}}, {"$or": [{"top1_mood": "ANNOYED"}, {"top2_mood": "ANNOYED"}, {"top3_mood": "ANNOYED"}]}]}
+    n_annoyed = emotions.count_documents(my_query)
+    percent_annoyed = round(n_annoyed/n_total, 2)
+
+    # number of tweets where emotion DONT_CARE is the top1, top2 or top3 emotion
+    my_query = {"$and": [{"extracted_at": {"$eq": date}}, {"$or": [{"top1_mood": "DONT_CARE"}, {"top2_mood": "DONT_CARE"}, {"top3_mood": "DONT_CARE"}]}]}
+    n_dontcare = emotions.count_documents(my_query)
+    percent_dontcare = round(n_dontcare/n_total, 2)
+
+    # number of tweets where emotion HAPPY is the top1, top2 or top3 emotion
+    my_query = {"$and": [{"extracted_at": {"$eq": date}}, {"$or": [{"top1_mood": "HAPPY"}, {"top2_mood": "HAPPY"}, {"top3_mood": "HAPPY"}]}]}
+    n_happy = emotions.count_documents(my_query)
+    percent_happy = round(n_happy/n_total, 2)
+
+    # number of tweets where emotion INSPIRED is the top1, top2 or top3 emotion
+    my_query = {"$and": [{"extracted_at": {"$eq": date}}, {"$or": [{"top1_mood": "INSPIRED"}, {"top2_mood": "INSPIRED"}, {"top3_mood": "INSPIRED"}]}]}
+    n_inspired = emotions.count_documents(my_query)
+    percent_inspired = round(n_inspired/n_total, 2)
+
+    # number of tweets where emotion SAD is the top1, top2 or top3 emotion
+    my_query = {"$and": [{"extracted_at": {"$eq": date}}, {"$or": [{"top1_mood": "SAD"}, {"top2_mood": "SAD"}, {"top3_mood": "SAD"}]}]}
+    n_sad = emotions.count_documents(my_query)
+    percent_sad = round(n_sad/n_total, 2)
+
+    dt = datetime.strptime(date, "%Y-%m-%d")
+    # date_ymw is a tuple with the form (date, year, month, week)
+    date_ymw = (date, dt.strftime("%Y"), dt.strftime("%m"), dt.strftime("%U"))
+
+    doc = {"extracted_at": date_ymw[0], "year": date_ymw[1], "month": date_ymw[2], "week_of_year": date_ymw[3],
+           "amused_count": n_amused, "amused_percent": percent_amused, 
+           "afraid_count": n_afraid, "afraid_percent": percent_afraid,
+           "angry_count": n_angry, "angry_percent": percent_angry,
+           "annoyed_count": n_annoyed, "annoyed_percent": percent_annoyed,
+           "dontcare_count": n_dontcare, "dontcare_percent": percent_dontcare,
+           "happy_count": n_happy, "happy_percent": percent_happy,
+           "inspired_count": n_inspired, "inspired_percent": percent_inspired,
+           "sad_count": n_sad, "sad_percent": percent_sad}
+    
+    emotions_daily_main.insert_one(doc)
+
+
 if __name__ == '__main__':
 
     # save emotions analysis results to a MongoDB database
-    get_emotions(dmood_emotions(load_tweets_mongo("2022-10-19")))
+    #get_emotions(dmood_emotions(load_tweets_mongo("2022-10-19")))
+
+    # aggregate emotion analysis results (daily)
+    agg_emotions_daily("2022-10-19")
 
     print('Success!')
