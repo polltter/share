@@ -138,7 +138,7 @@ def agg_emotions_daily(date):
     # date_ymw is a tuple with the form (date, year, month, week)
     date_ymw = (date, dt.strftime("%Y"), dt.strftime("%m"), dt.strftime("%U"))
 
-    doc = {"extracted_at": date_ymw[0], "year": date_ymw[1], "month": date_ymw[2], "week_of_year": date_ymw[3],
+    doc = {"extracted_at": date_ymw[0], "year": date_ymw[1], "month": date_ymw[2], "week_of_year": date_ymw[3], "n_tweets": n_total,
            "amused_count": n_amused, "amused_percent": percent_amused, 
            "afraid_count": n_afraid, "afraid_percent": percent_afraid,
            "angry_count": n_angry, "angry_percent": percent_angry,
@@ -168,15 +168,16 @@ def agg_emotions_weekly(week):
                     "total_happy_count": {"$sum": "$happy_count"},
                     "total_inspired_count": {"$sum": "$inspired_count"},
                     "total_sad_count": {"$sum": "$sad_count"},
+                    "total_n_tweets": {"$sum": "$n_tweets"},
                     "total_number_of_days": {"$sum": 1}}},
-        {"$addFields": {"amused_percent": {"$round": [{"$divide": ["$total_amused_count", "$total_number_of_days"]}, 2]}, 
-                        "afraid_percent": {"$round": [{"$divide": ["$total_afraid_count", "$total_number_of_days"]}, 2]}, 
-                        "angry_percent": {"$round": [{"$divide": ["$total_angry_count", "$total_number_of_days"]}, 2]},
-                        "annoyed_percent": {"$round": [{"$divide": ["$total_annoyed_count", "$total_number_of_days"]}, 2]},
-                        "dontcare_percent": {"$round": [{"$divide": ["$total_dontcare_count", "$total_number_of_days"]}, 2]},
-                        "happy_percent": {"$round": [{"$divide": ["$total_happy_count", "$total_number_of_days"]}, 2]},
-                        "inspired_percent": {"$round": [{"$divide": ["$total_inspired_count", "$total_number_of_days"]}, 2]},
-                        "sad_percent": {"$round": [{"$divide": ["$total_sad_count", "$total_number_of_days"]}, 2]}}
+        {"$addFields": {"amused_percent": {"$round": [{"$divide": ["$total_amused_count", "$total_n_tweets"]}, 2]}, 
+                        "afraid_percent": {"$round": [{"$divide": ["$total_afraid_count", "$total_n_tweets"]}, 2]}, 
+                        "angry_percent": {"$round": [{"$divide": ["$total_angry_count", "$total_n_tweets"]}, 2]},
+                        "annoyed_percent": {"$round": [{"$divide": ["$total_annoyed_count", "$total_n_tweets"]}, 2]},
+                        "dontcare_percent": {"$round": [{"$divide": ["$total_dontcare_count", "$total_n_tweets"]}, 2]},
+                        "happy_percent": {"$round": [{"$divide": ["$total_happy_count", "$total_n_tweets"]}, 2]},
+                        "inspired_percent": {"$round": [{"$divide": ["$total_inspired_count", "$total_n_tweets"]}, 2]},
+                        "sad_percent": {"$round": [{"$divide": ["$total_sad_count", "$total_n_tweets"]}, 2]}}
         }
     ])
 
@@ -201,15 +202,16 @@ def agg_emotions_monthly(month, year):
                     "total_happy_count": {"$sum": "$happy_count"},
                     "total_inspired_count": {"$sum": "$inspired_count"},
                     "total_sad_count": {"$sum": "$sad_count"},
+                    "total_n_tweets": {"$sum": "$n_tweets"},
                     "total_number_of_days": {"$sum": 1}}},
-        {"$addFields": {"amused_percent": {"$round": [{"$divide": ["$total_amused_count", "$total_number_of_days"]}, 2]}, 
-                        "afraid_percent": {"$round": [{"$divide": ["$total_afraid_count", "$total_number_of_days"]}, 2]}, 
-                        "angry_percent": {"$round": [{"$divide": ["$total_angry_count", "$total_number_of_days"]}, 2]},
-                        "annoyed_percent": {"$round": [{"$divide": ["$total_annoyed_count", "$total_number_of_days"]}, 2]},
-                        "dontcare_percent": {"$round": [{"$divide": ["$total_dontcare_count", "$total_number_of_days"]}, 2]},
-                        "happy_percent": {"$round": [{"$divide": ["$total_happy_count", "$total_number_of_days"]}, 2]},
-                        "inspired_percent": {"$round": [{"$divide": ["$total_inspired_count", "$total_number_of_days"]}, 2]},
-                        "sad_percent": {"$round": [{"$divide": ["$total_sad_count", "$total_number_of_days"]}, 2]}, 
+        {"$addFields": {"amused_percent": {"$round": [{"$divide": ["$total_amused_count", "$total_n_tweets"]}, 2]}, 
+                        "afraid_percent": {"$round": [{"$divide": ["$total_afraid_count", "$total_n_tweets"]}, 2]}, 
+                        "angry_percent": {"$round": [{"$divide": ["$total_angry_count", "$total_n_tweets"]}, 2]},
+                        "annoyed_percent": {"$round": [{"$divide": ["$total_annoyed_count", "$total_n_tweets"]}, 2]},
+                        "dontcare_percent": {"$round": [{"$divide": ["$total_dontcare_count", "$total_n_tweets"]}, 2]},
+                        "happy_percent": {"$round": [{"$divide": ["$total_happy_count", "$total_n_tweets"]}, 2]},
+                        "inspired_percent": {"$round": [{"$divide": ["$total_inspired_count", "$total_n_tweets"]}, 2]},
+                        "sad_percent": {"$round": [{"$divide": ["$total_sad_count", "$total_n_tweets"]}, 2]}, 
                         "year": year} # field added to make the yearly aggregation easier
         }
     ])
@@ -231,5 +233,8 @@ if __name__ == '__main__':
 
     # aggregate emotion analysis results (monthly)
     agg_emotions_monthly("10", "2022")
+
+    # aggregate emotion analysis results (yearly)
+    #agg_emotions_yearly("2022")
 
     print('Success!')
