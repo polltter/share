@@ -62,17 +62,19 @@ def aggregate_data_weekly():
 def aggregate_data_monthly():
 
     current_month = datetime.utcnow().strftime('%m')
-    if current_month == "01":
-        previous_month = "12"
-    else:
-        previous_month = str(int(datetime.utcnow().strftime('%m')) - 1)
-
     current_year = datetime.utcnow().strftime('%Y')
 
-    #agg_kw_monthly(previous_month, current_year)
+    if current_month == "01":
+        previous_month = "12"
+        year = str(int(current_year) - 1)
+    else:
+        previous_month = str(int(current_month) - 1)
+        year = current_year
+
+    #agg_kw_monthly(previous_month, year)
     print(f"Keyword extraction results successfully aggregated for month {previous_month}.")
 
-    #agg_sentiment_monthly(previous_month, current_year)
+    #agg_sentiment_monthly(previous_month, year)
     print(f"Sentiment Analysis results successfully aggregated for month {previous_month}.")
 
 
