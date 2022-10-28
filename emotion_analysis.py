@@ -44,7 +44,13 @@ def load_tweets_mongo(date, language='en'):
 
 
 def dmood_emotions(df):
-    
+    """Returns data frame with moods, top-1, top-2 and top-3 mood for each text.
+
+    :param df: Data frame to pass as input
+    :type df:DataFrame
+    :return: A data frame with emotion analysis results
+    :rtype: DataFrame
+    """
     df_dmood = df.copy()
 
     corpus = textacy.Corpus("en_core_web_sm", df_dmood['text'])
@@ -67,13 +73,17 @@ def dmood_emotions(df):
     df_dmood['top2_mood'] = df_dmood['mood'].map(lambda x: x[1][0])
     df_dmood['top3_mood'] = df_dmood['mood'].map(lambda x: x[2][0])
     
-    return(df_dmood)
+    return df_dmood
 
 #print(dmood_emotions(load_tweets_mongo("2022-10-02")).head())
 
 
 def get_emotions(df):
+    """Saves emotion analysis results in a MongoDB database.
 
+    :param df: Data frame to pass as input
+    :type df: DataFrame
+    """
     # convert dataframe into a list of dictionaries
     df_dict = df.to_dict(orient='records') # we get a list where each element corresponds to a row of the dataframe
 
@@ -86,7 +96,11 @@ def get_emotions(df):
 
 
 def agg_emotions_daily(date):
+    """Aggregates emotion analysis results on a daily basis.
 
+    :param date: Date ("yyyy-mm-dd") of aggregation
+    :type date: string
+    """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     emotions = db['emotions_test'] # collection emotions_test
     emotions_daily_main = db['emotions_daily_main'] # collection emotions_daily_main
@@ -152,7 +166,11 @@ def agg_emotions_daily(date):
 
 
 def agg_emotions_weekly(week):
+    """Aggregates emotion analysis results on a weekly basis.
 
+    :param week: Week of aggregation
+    :type week: string
+    """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     emotions_daily_main = db['emotions_daily_main'] # collection emotions_daily_main
     emotions_weekly_main = db['emotions_weekly_main'] # collection emotions_weekly_main
@@ -186,7 +204,13 @@ def agg_emotions_weekly(week):
 
 
 def agg_emotions_monthly(month, year):
+    """Aggregates emotion analysis results on a monthly basis.
 
+    :param month: Month of aggregation
+    :type month: string
+    :param year: Year of aggregation
+    :type year: string
+    """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     emotions_daily_main = db['emotions_daily_main'] # collection emotions_daily_main
     emotions_monthly_main = db['emotions_monthly_main'] # collection emotions_monthly_main
@@ -221,7 +245,11 @@ def agg_emotions_monthly(month, year):
 
 
 def agg_emotions_yearly(year):
+    """Aggregates emotion analysis results on a yearly basis.
 
+    :param year: Year of aggregation
+    :type year: string
+    """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     emotions_monthly_main = db['emotions_monthly_main'] # collection emotions_monthly_main
     emotions_yearly_main = db['emotions_yearly_main'] # collection emotions_yearly_main
