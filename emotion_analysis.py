@@ -220,6 +220,40 @@ def agg_emotions_monthly(month, year):
         emotions_monthly_main.insert_one(x)
 
 
+def agg_emotions_yearly(year):
+
+    db = mongo_client['rep_analysis_main'] # database rep_analysis_main
+    emotions_monthly_main = db['emotions_monthly_main'] # collection emotions_monthly_main
+    emotions_yearly_main = db['emotions_yearly_main'] # collection emotions_yearly_main
+
+    cursor = emotions_monthly_main.aggregate([
+        {"$match": {"year": year}}, 
+        {"$group": {"_id": {"year": "$year"}, 
+                    "total_amused_count": {"$sum": "$total_amused_count"}, 
+                    "total_afraid_count": {"$sum": "$total_afraid_count"}, 
+                    "total_angry_count": {"$sum": "$total_angry_count"},
+                    "total_annoyed_count": {"$sum": "$total_annoyed_count"},
+                    "total_dontcare_count": {"$sum": "$total_dontcare_count"},
+                    "total_happy_count": {"$sum": "$total_happy_count"},
+                    "total_inspired_count": {"$sum": "$total_inspired_count"},
+                    "total_sad_count": {"$sum": "$total_sad_count"},
+                    "total_n_tweets": {"$sum": "$total_n_tweets"},
+                    "total_number_of_months": {"$sum": 1}}},
+        {"$addFields": {"amused_percent": {"$round": [{"$divide": ["$total_amused_count", "$total_n_tweets"]}, 2]},
+                        "afraid_percent": {"$round": [{"$divide": ["$total_afraid_count", "$total_n_tweets"]}, 2]}, 
+                        "angry_percent": {"$round": [{"$divide": ["$total_angry_count", "$total_n_tweets"]}, 2]},
+                        "annoyed_percent": {"$round": [{"$divide": ["$total_annoyed_count", "$total_n_tweets"]}, 2]},
+                        "dontcare_percent": {"$round": [{"$divide": ["$total_dontcare_count", "$total_n_tweets"]}, 2]},
+                        "happy_percent": {"$round": [{"$divide": ["$total_happy_count", "$total_n_tweets"]}, 2]},
+                        "inspired_percent": {"$round": [{"$divide": ["$total_inspired_count", "$total_n_tweets"]}, 2]},
+                        "sad_percent": {"$round": [{"$divide": ["$total_sad_count", "$total_n_tweets"]}, 2]}}    
+        }
+    ])
+
+    for x in cursor:
+        emotions_yearly_main.insert_one(x)
+
+
 if __name__ == '__main__':
 
     # save emotions analysis results to a MongoDB database
@@ -232,9 +266,9 @@ if __name__ == '__main__':
     #agg_emotions_weekly("42")
 
     # aggregate emotion analysis results (monthly)
-    agg_emotions_monthly("10", "2022")
+    #agg_emotions_monthly("10", "2022")
 
     # aggregate emotion analysis results (yearly)
-    #agg_emotions_yearly("2022")
+    agg_emotions_yearly("2022")
 
     print('Success!')
