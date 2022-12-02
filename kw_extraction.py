@@ -216,7 +216,7 @@ def kw_in_context(df, kw):
 #kw_in_context(load_tweets(), "burger king")
 #kw_in_context(load_tweets(), "mcdonalds")
 
-
+test_date = "2022-10-19"
 # python -m spacy download en_core_web_sm
 def extract_kw():
     """Returns dictionary with extracted keywords and their respective weights.
@@ -226,7 +226,8 @@ def extract_kw():
     """
     yesterday = (datetime.utcnow()-timedelta(days=1)).strftime('%Y-%m-%d')
     #yesterday = "2022-09-29"
-    corpus = textacy.Corpus("en_core_web_sm", load_tweets_mongo(yesterday)['text'])
+    #corpus = textacy.Corpus("en_core_web_sm", load_tweets_mongo(yesterday)['text'])
+    corpus = textacy.Corpus("en_core_web_sm", load_tweets_mongo(test_date)['text'])
     #print(corpus)
 
     kw_weights = Counter()
@@ -234,6 +235,14 @@ def extract_kw():
     for doc in corpus:
         keywords = doc._.extract_keyterms("textrank", normalize='lower', window_size=2, edge_weighting="binary", topn=10)
         kw_weights.update(dict(keywords))
+
+    # normalize counter values between 0 and 1
+    maximum = max(kw_weights.values())
+    minimum = min(kw_weights.values())
+    max_min = maximum - minimum
+
+    for k in kw_weights.keys():
+        kw_weights[k] = (kw_weights[k] - minimum) / (max_min)
 
     return kw_weights
 
@@ -326,9 +335,12 @@ def get_keywords(word_freq, additional_stopwords=None):
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     #db = mongo_client['central'] # database central
     #kw_freq_weight = db['kw_freq_weight'] # collection kw_freq_weight
-    kw_freq_weight = db['kw_freq_weight_test'] # collection kw_freq_weight_test
+    #kw_freq_weight = db['kw_freq_weight_test'] # collection kw_freq_weight_test
+    kw_freq_weight = db['kw_freq_weight_test_norm'] # collection kw_freq_weight_test
 
-    extracted_at = (datetime.utcnow()-timedelta(days=1)).strftime('%Y-%m-%d')
+    #extracted_at = (datetime.utcnow()-timedelta(days=1)).strftime('%Y-%m-%d')
+    #extracted_at = "2022-09-29"
+    extracted_at = test_date
     kw_freq_weight.insert_one({"kw_weights": counter, "extracted_at": extracted_at})
     # extracted_at will be the day before the one we are currently in because we are doing this everyday
 
@@ -340,8 +352,10 @@ def agg_kw_daily(date):
     :type date: string
     """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
-    kw_freq_weight = db['kw_freq_weight_test'] # collection kw_freq_weight_test
-    kw_daily_main = db['kw_daily_main'] # collection kw_daily_main
+    #kw_freq_weight = db['kw_freq_weight_test'] # collection kw_freq_weight_test
+    kw_freq_weight = db['kw_freq_weight_test_norm'] # collection kw_freq_weight_test_norm
+    #kw_daily_main = db['kw_daily_main'] # collection kw_daily_main
+    kw_daily_main = db['kw_daily_norm'] # collection kw_daily_norm
 
     my_query = {"extracted_at": {"$eq": date}}
     cursor = kw_freq_weight.find(my_query)
@@ -463,10 +477,10 @@ if __name__ == '__main__':
     #get_keywords(compute_freq(load_tweets_mongo())['freq'])
 
     # keywords with term weights (textrank)
-    get_keywords(clean_kw())
+    #get_keywords(clean_kw())
 
     # aggregate keyword extraction results (daily)
-    #agg_kw_daily("2022-10-19")
+    agg_kw_daily("2022-10-19")
 
     # aggregate keyword extraction results (weekly)
     #agg_kw_weekly("42")
