@@ -450,8 +450,10 @@ def agg_kw_yearly(year):
     :type year: string
     """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
-    kw_monthly_main = db['kw_monthly_main'] # collection kw_monthly_main
-    kw_yearly_main = db['kw_yearly_main'] # collection kw_yearly_main
+    #kw_monthly_main = db['kw_monthly_main'] # collection kw_monthly_main
+    kw_monthly_main = db['kw_monthly_norm'] # collection kw_monthly_norm
+    #kw_yearly_main = db['kw_yearly_main'] # collection kw_yearly_main
+    kw_yearly_main = db['kw_yearly_norm'] # collection kw_yearly_norm
     
     my_query = {"year": {"$eq": year}}
     temp_dict = defaultdict(list)
@@ -463,10 +465,12 @@ def agg_kw_yearly(year):
     mean_dict = {}
 
     for k, v in temp_dict.items():
-        mean_dict[k] = sum(value for value in v) / len(v)
+        mean_dict[k] = round(sum(value for value in v) / len(v))
+
+    mean_dict_ordered = dict(Counter(mean_dict).most_common())
     
     id_dict = {'_id': {'year': year}}
-    kw_dict = {'kw_weights': mean_dict}
+    kw_dict = {'kw_weights': mean_dict_ordered}
     
     yearly_dict = {**id_dict, **kw_dict}
     
@@ -494,9 +498,9 @@ if __name__ == '__main__':
     #agg_kw_weekly("42")
 
     # aggregate keyword extraction results (monthly)
-    agg_kw_monthly("10", "2022")
+    #agg_kw_monthly("10", "2022")
 
     # aggregate keyword extraction results (yearly)
-    #agg_kw_yearly("2022")
+    agg_kw_yearly("2022")
 
     print('Success!')
