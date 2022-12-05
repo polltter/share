@@ -379,9 +379,9 @@ def agg_kw_weekly(week):
     :type week: string
     """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
-    kw_daily_main = db['kw_daily_main'] # collection kw_daily_main
+    #kw_daily_main = db['kw_daily_main'] # collection kw_daily_main
     kw_daily_main = db['kw_daily_norm'] # collection kw_daily_norm
-    kw_weekly_main = db['kw_weekly_main'] # collection kw_weekly_main
+    #kw_weekly_main = db['kw_weekly_main'] # collection kw_weekly_main
     kw_weekly_main = db['kw_weekly_norm'] # collection kw_weekly_norm
 
     my_query = {"week_of_year": {"$eq": week}}
@@ -416,8 +416,10 @@ def agg_kw_monthly(month, year):
     :type year: string
     """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
-    kw_daily_main = db['kw_daily_main'] # collection kw_daily_main
-    kw_monthly_main = db['kw_monthly_main'] # collection kw_monthly_main
+    #kw_daily_main = db['kw_daily_main'] # collection kw_daily_main
+    kw_daily_main = db['kw_daily_norm'] # collection kw_daily_norm
+    #kw_monthly_main = db['kw_monthly_main'] # collection kw_monthly_main
+    kw_monthly_main = db['kw_monthly_norm'] # collection kw_monthly_norm
     
     my_query = {"month": {"$eq": month}}
     temp_dict = defaultdict(list)
@@ -429,10 +431,12 @@ def agg_kw_monthly(month, year):
     mean_dict = {}
 
     for k, v in temp_dict.items():
-        mean_dict[k] = sum(value for value in v) / len(v)
+        mean_dict[k] = round(sum(value for value in v) / len(v))
+    
+    mean_dict_ordered = dict(Counter(mean_dict).most_common())
     
     id_dict = {'_id': {'year_month': [year, month]}}
-    kw_dict = {'kw_weights': mean_dict, 'year': year}
+    kw_dict = {'kw_weights': mean_dict_ordered, 'year': year}
     
     monthly_dict = {**id_dict, **kw_dict}
     
@@ -487,10 +491,10 @@ if __name__ == '__main__':
     #agg_kw_daily("2022-10-19")
 
     # aggregate keyword extraction results (weekly)
-    agg_kw_weekly("42")
+    #agg_kw_weekly("42")
 
     # aggregate keyword extraction results (monthly)
-    #agg_kw_monthly("10", "2022")
+    agg_kw_monthly("10", "2022")
 
     # aggregate keyword extraction results (yearly)
     #agg_kw_yearly("2022")
