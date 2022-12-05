@@ -380,8 +380,10 @@ def agg_kw_weekly(week):
     """
     db = mongo_client['rep_analysis_main'] # database rep_analysis_main
     kw_daily_main = db['kw_daily_main'] # collection kw_daily_main
+    kw_daily_main = db['kw_daily_norm'] # collection kw_daily_norm
     kw_weekly_main = db['kw_weekly_main'] # collection kw_weekly_main
-    
+    kw_weekly_main = db['kw_weekly_norm'] # collection kw_weekly_norm
+
     my_query = {"week_of_year": {"$eq": week}}
     temp_dict = defaultdict(list)
 
@@ -392,11 +394,13 @@ def agg_kw_weekly(week):
     mean_dict = {}
 
     for k, v in temp_dict.items():
-        mean_dict[k] = sum(value for value in v) / len(v)
+        mean_dict[k] = round(sum(value for value in v) / len(v))
+    
+    mean_dict_ordered = dict(Counter(mean_dict).most_common())
     
     year = list(kw_daily_main.find(my_query))[0]['year']
     id_dict = {'_id': {'year_week': [year, week]}}
-    kw_dict = {'kw_weights': mean_dict}
+    kw_dict = {'kw_weights': mean_dict_ordered}
     
     weekly_dict = {**id_dict, **kw_dict}
     
@@ -480,10 +484,10 @@ if __name__ == '__main__':
     #get_keywords(clean_kw())
 
     # aggregate keyword extraction results (daily)
-    agg_kw_daily("2022-10-19")
+    #agg_kw_daily("2022-10-19")
 
     # aggregate keyword extraction results (weekly)
-    #agg_kw_weekly("42")
+    agg_kw_weekly("42")
 
     # aggregate keyword extraction results (monthly)
     #agg_kw_monthly("10", "2022")
