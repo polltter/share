@@ -236,13 +236,13 @@ def extract_kw():
         keywords = doc._.extract_keyterms("textrank", normalize='lower', window_size=2, edge_weighting="binary", topn=10)
         kw_weights.update(dict(keywords))
 
-    # normalize counter values between 0 and 1
+    # convert counter values to integers between 0 and 100
     maximum = max(kw_weights.values())
     minimum = min(kw_weights.values())
     max_min = maximum - minimum
 
     for k in kw_weights.keys():
-        kw_weights[k] = (kw_weights[k] - minimum) / (max_min)
+        kw_weights[k] = round(((kw_weights[k] - minimum) / (max_min)) * 100)
 
     return kw_weights
 
