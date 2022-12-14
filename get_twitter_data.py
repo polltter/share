@@ -74,7 +74,7 @@ def get_tweets(query, start_time=None, end_time=None, max_results=100):
             file.write(tweet_json + '\n')
 
 
-ymd = '%Y-%m-%d' # date format: yyy-mm-dd
+ymd = '%Y-%m-%d' # date format: yyyy-mm-dd
 
 def get_tweets_mongo(company, start_time=None, end_time=None, max_results=100):
     """Saves Twitter data in a MongoDB database.
