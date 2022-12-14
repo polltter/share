@@ -468,9 +468,10 @@ def agg_kw_yearly(year):
             temp_dict[k].append(v)
         
     mean_dict = {}
+    n_docs = kw_monthly_main.count_documents(my_query)
 
     for k, v in temp_dict.items():
-        mean_dict[k] = round(sum(value for value in v) / len(v))
+        mean_dict[k] = round(sum(value for value in v) / n_docs)
 
     mean_dict_ordered = dict(Counter(mean_dict).most_common())
     
@@ -503,9 +504,9 @@ if __name__ == '__main__':
     #agg_kw_weekly("42")
 
     # aggregate keyword extraction results (monthly)
-    agg_kw_monthly("10", "2022")
+    #agg_kw_monthly("10", "2022")
 
     # aggregate keyword extraction results (yearly)
-    #agg_kw_yearly("2022")
+    agg_kw_yearly("2022")
 
     print('Success!')
