@@ -216,7 +216,7 @@ def kw_in_context(df, kw):
 #kw_in_context(load_tweets(), "burger king")
 #kw_in_context(load_tweets(), "mcdonalds")
 
-test_date = "2022-09-29"
+test_date = "2022-10-19"
 # python -m spacy download en_core_web_sm
 def extract_kw():
     """Returns dictionary with extracted keywords and their respective weights.
@@ -395,9 +395,10 @@ def agg_kw_weekly(week):
             temp_dict[k].append(v)
         
     mean_dict = {}
+    n_docs = kw_daily_main.count_documents(my_query)
 
     for k, v in temp_dict.items():
-        mean_dict[k] = round(sum(value for value in v) / len(v))
+        mean_dict[k] = round(sum(value for value in v) / n_docs)
     
     mean_dict_ordered = dict(Counter(mean_dict).most_common())
     
@@ -492,13 +493,13 @@ if __name__ == '__main__':
     #get_keywords(compute_freq(load_tweets_mongo())['freq'])
 
     # keywords with term weights (textrank)
-    get_keywords(clean_kw())
+    #get_keywords(clean_kw())
 
     # aggregate keyword extraction results (daily)
     #agg_kw_daily("2022-10-19")
 
     # aggregate keyword extraction results (weekly)
-    #agg_kw_weekly("42")
+    agg_kw_weekly("42")
 
     # aggregate keyword extraction results (monthly)
     #agg_kw_monthly("10", "2022")
