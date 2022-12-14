@@ -183,39 +183,6 @@ def compute_freq(df, tokenizer=tokens_nopunct, stop_words=stopwords(), n_min=1, 
 #print(compute_freq(load_tweets_mongo()))
 
 
-def kw_in_context(df, kw):
-    """Prints chosen keyword in context.
-
-    :param df: Data frame to pass as input
-    :type df: DataFrame
-    :param kw: Keyword to look for
-    :type kw: str
-    """
-    kwic_list = []
-
-    for doc in df['text']:
-        if len(list(keyword_in_context(doc, kw))) > 0:
-            kwic_list.append(list(keyword_in_context(doc, kw)))
-
-    #print(len(kwic_list))
-
-    if len(kwic_list) == 0:
-        print('keyword not found!')
-
-    elif len(kwic_list) < 5:
-        for kwic in kwic_list:
-            for tup in kwic:
-                print(re.sub(r'[\n\t]', ' ', tup[0]) + ' [' + tup[1] + '] ' + re.sub(r'[\n\t]', ' ', tup[2]) + '\n')
-    
-    else:
-        for sample in random.sample(kwic_list, 5):
-            for tup in sample:
-                print(re.sub(r'[\n\t]', ' ', tup[0]) + ' [' + tup[1] + '] ' + re.sub(r'[\n\t]', ' ', tup[2]) + '\n')
-
-#kw_in_context(load_tweets(), "kw inexistente")
-#kw_in_context(load_tweets(), "burger king")
-#kw_in_context(load_tweets(), "mcdonalds")
-
 test_date = "2022-10-19"
 # python -m spacy download en_core_web_sm
 def extract_kw():
