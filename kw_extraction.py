@@ -216,7 +216,7 @@ def kw_in_context(df, kw):
 #kw_in_context(load_tweets(), "burger king")
 #kw_in_context(load_tweets(), "mcdonalds")
 
-test_date = "2022-10-19"
+test_date = "2022-09-29"
 # python -m spacy download en_core_web_sm
 def extract_kw():
     """Returns dictionary with extracted keywords and their respective weights.
@@ -251,7 +251,8 @@ def extract_kw():
 
 def clean_kw():
     """Returns dictionary with extracted keywords and their respective weights,
-    removing keywords containing Twitter handles, links or emojis.
+    removing keywords that have more than 3 words
+    or that contain Twitter handles, links or emojis.
 
     :return: A dictionary with keyword-weight pairs
     :rtype: dict
@@ -267,7 +268,9 @@ def clean_kw():
     kw_weights_clean = {}
 
     for kw, weight in extract_kw().items():
-        if not (kw.startswith('@') or 'http' in kw):
+        # exclude kw with handles, links and n-grams with n > 3
+        if not (kw.startswith('@') or 'http' in kw) and len(kw.split()) < 4:
+            # exclude kw with emojis
             if regex_pattern.sub(r'', kw) == kw:
                 kw_weights_clean[kw] = weight
 
@@ -489,7 +492,7 @@ if __name__ == '__main__':
     #get_keywords(compute_freq(load_tweets_mongo())['freq'])
 
     # keywords with term weights (textrank)
-    #get_keywords(clean_kw())
+    get_keywords(clean_kw())
 
     # aggregate keyword extraction results (daily)
     #agg_kw_daily("2022-10-19")
@@ -501,6 +504,6 @@ if __name__ == '__main__':
     #agg_kw_monthly("10", "2022")
 
     # aggregate keyword extraction results (yearly)
-    agg_kw_yearly("2022")
+    #agg_kw_yearly("2022")
 
     print('Success!')
