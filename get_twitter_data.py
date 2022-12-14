@@ -74,6 +74,8 @@ def get_tweets(query, start_time=None, end_time=None, max_results=100):
             file.write(tweet_json + '\n')
 
 
+ymd = '%Y-%m-%d' # date format: yyy-mm-dd
+
 def get_tweets_mongo(company, start_time=None, end_time=None, max_results=100):
     """Saves Twitter data in a MongoDB database.
 
@@ -100,7 +102,7 @@ def get_tweets_mongo(company, start_time=None, end_time=None, max_results=100):
         query = word + " -is:retweet lang:en"
 
         search_word_dict = {'search_word': word}
-        date = datetime.utcnow().strftime('%Y-%m-%d')
+        date = datetime.utcnow().strftime(ymd)
         extracted_at_dict = {'extracted_at': date}
 
         start = time.time()
@@ -125,8 +127,8 @@ if __name__ == '__main__':
     # test for a given query and a time interval of 30 minutes
     """
     query = "McDonalds -is:retweet lang:en"
-    start_time=(datetime.today()-timedelta(days=1)).strftime('%Y-%m-%d') + 'T23:00:00Z' # yesterday at 23:00:00
-    end_time=(datetime.today()-timedelta(days=1)).strftime('%Y-%m-%d') + 'T23:30:00Z' # yesterday at 23:30:00
+    start_time=(datetime.today()-timedelta(days=1)).strftime(ymd) + 'T23:00:00Z' # yesterday at 23:00:00
+    end_time=(datetime.today()-timedelta(days=1)).strftime(ymd) + 'T23:30:00Z' # yesterday at 23:30:00
 
     get_tweets(query=query, start_time=start_time, end_time=end_time)
 
@@ -135,8 +137,8 @@ if __name__ == '__main__':
 
     # test for Vodafone and a time interval of 10 minutes
     """
-    start_time=(datetime.today()-timedelta(days=1)).strftime('%Y-%m-%d') + 'T23:00:00Z' # yesterday at 23:00:00
-    end_time=(datetime.today()-timedelta(days=1)).strftime('%Y-%m-%d') + 'T23:30:00Z' # yesterday at 23:10:00
+    start_time=(datetime.today()-timedelta(days=1)).strftime(ymd) + 'T23:00:00Z' # yesterday at 23:00:00
+    end_time=(datetime.today()-timedelta(days=1)).strftime(ymd) + 'T23:30:00Z' # yesterday at 23:10:00
 
     get_tweets_mongo(company="Vodafone", start_time=start_time, end_time=end_time)
 
@@ -144,8 +146,8 @@ if __name__ == '__main__':
     """
 
     # test for McDonald's and a time interval of 10 minutes
-    start_time=(datetime.today()-timedelta(days=1)).strftime('%Y-%m-%d') + 'T23:00:00Z' # yesterday at 23:00:00
-    end_time=(datetime.today()-timedelta(days=1)).strftime('%Y-%m-%d') + 'T23:30:00Z' # yesterday at 23:10:00
+    start_time=(datetime.today()-timedelta(days=1)).strftime(ymd) + 'T23:00:00Z' # yesterday at 23:00:00
+    end_time=(datetime.today()-timedelta(days=1)).strftime(ymd) + 'T23:30:00Z' # yesterday at 23:10:00
 
     get_tweets_mongo(company="McDonald's", start_time=start_time, end_time=end_time)
 
