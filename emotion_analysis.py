@@ -5,6 +5,8 @@ import pandas as pd
 #import textacy
 import textacy.resources
 
+from transformers import pipeline
+
 from datetime import datetime
 
 
@@ -76,6 +78,29 @@ def dmood_emotions(df):
     return df_dmood
 
 #print(dmood_emotions(load_tweets_mongo("2022-10-02")).head())
+
+
+def ml_emotions(df, model="j-hartmann/emotion-english-distilroberta-base"):
+    """Returns data frame with emotions, top-1, top-2 and top-3 emotions for each text.
+
+    :param df: Data frame to pass as input
+    :type df:DataFrame
+    :return: A data frame with emotion analysis results
+    :rtype: DataFrame
+    """
+    df_ml = df.copy()
+
+    classifier = pipeline("text-classification", model)
+    emotion_analysis = classifier(df_ml['text'].tolist(), top_k=3) # top_k=3 to get the scores for the top-3 emotions
+
+    df_ml['emotion'] = pd.Series(emotion_analysis)
+    df_ml['top1_emotion'] = df_ml['emotion'].map(lambda x: x[0]['label'])
+    df_ml['top2_emotion'] = df_ml['emotion'].map(lambda x: x[1]['label'])
+    df_ml['top3_emotion'] = df_ml['emotion'].map(lambda x: x[2]['label'])
+    
+    return df_ml
+
+print(ml_emotions(load_tweets_mongo("2022-10-02")).head(10))
 
 
 def get_emotions(df):
@@ -297,6 +322,6 @@ if __name__ == '__main__':
     #agg_emotions_monthly("10", "2022")
 
     # aggregate emotion analysis results (yearly)
-    agg_emotions_yearly("2022")
+    #agg_emotions_yearly("2022")
 
     print('Success!')
