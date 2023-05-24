@@ -10,6 +10,7 @@ from bson.json_util import dumps
 from get_client_info import get_analysis
 from kw_extraction_api import clean_kw, get_keywords, agg_kw_daily
 from sentiment_analysis_api import ml_sent, get_sentiment, agg_sentiment_daily
+from emotion_analysis_api import ml_emotions, get_emotions, agg_emotions_daily
 
 
 mongo_client = pymongo.MongoClient('mongodb://localhost:27017/')
@@ -140,11 +141,52 @@ def post_sent_daily(tenant, collection):
     response = requests.post(sent_daily_url, headers=headers, data=data)
 
     print(response.status_code)
-    print(response.json())
+    #print(response.json())
 
 
 emo_url = "https://esg-maturity.com/api/v1/reputational/emotions"
+
+def post_emo(tenant, collection):
+
+    headers = {'Accept': 'application/json', 
+               'Content-Type': 'application/json', 
+               'Authorization': 'Bearer 2|IIvhcPW0VLmm11NXAuEVOxQMI1GLdyJ8cUntGzBB', 
+               'X-Tenant': tenant}
+    
+    cursor = collection.find(my_query, projection={'_id': False})
+    data = json.dumps({"ainfo_id": analysis[0], "data": dumps(cursor), "extracted_at": today})
+    # should I define extracted_at or is it automatically set?
+    
+    response = requests.post(emo_url, headers=headers, data=data)
+    
+    print(response.status_code)
+    #print(response.json())
+
+
 emo_daily_url = "https://esg-maturity.com/api/v1/reputational/emotions-daily"
+
+def post_emo_daily(tenant, collection):
+
+    headers = {'Accept': 'application/json', 
+               'Content-Type': 'application/json',
+               'Authorization': 'Bearer 2|IIvhcPW0VLmm11NXAuEVOxQMI1GLdyJ8cUntGzBB', 
+               'X-Tenant': tenant}
+        
+    cursor = collection.find(my_query, projection={'_id': False, 
+                                                        'year': False, 
+                                                        'month': False, 
+                                                        'week_of_year': False})
+    year = json.loads(dumps(collection.find(my_query)[0]))['year']
+    month = json.loads(dumps(collection.find(my_query)[0]))['month']
+    week = json.loads(dumps(collection.find(my_query)[0]))['week_of_year']
+    
+    data = json.dumps({"ainfo_id": analysis[0], "data": json.dumps(json.loads(dumps(cursor))[0]), 
+                        "year": year, "month": month, "week_of_year": week, "extracted_at": today})
+    
+    response = requests.post(emo_daily_url, headers=headers, data=data)
+
+    print(response.status_code)
+    print(response.json())
 
 
 analysis_per_tenant = get_analysis()
@@ -166,7 +208,7 @@ for tenant in analysis_per_tenant.keys():
         df_data = load_data(tenant)
 
         df = load_tweets(df_data)
-        """
+        
         ### EXTRACT KEYWORDS ###
         print("EXTRACTING KEYWORDS...")
         kw = clean_kw(df)
@@ -181,7 +223,7 @@ for tenant in analysis_per_tenant.keys():
         kw_daily = db['kw_daily'] # collection kw_daily
         post_kw_daily(tenant, kw_daily)
         print("KEYWORD EXTRACTION COMPLETED!")
-        """
+        
         ### SENTIMENT ANALYSIS ###
         print("RUNNING SENTIMENT ANALYSIS...")
         ml_sent_results = ml_sent(df)
@@ -195,9 +237,23 @@ for tenant in analysis_per_tenant.keys():
 
         sentiment_daily = db['sentiment_daily'] # collection sentiment_daily
         post_sent_daily(tenant, sentiment_daily)
-
         print("SENTIMENT ANALYSIS COMPLETED!")
         
+        ### EMOTION ANALYSIS ###
+        print("RUNNING EMOTION ANALYSIS...")
+        ml_emotions_results = ml_emotions(df)
+        get_emotions(db, ml_emotions_results)
+
+        emotions = db['emotions'] # collection emotions
+        post_emo(tenant, emotions)
+
+        ### EMOTIONS DAILY ###
+        agg_emotions_daily(db, today)
+
+        emotions_daily = db['emotions_daily'] # collection emotions_daily
+        post_emo_daily(tenant, emotions_daily)
+        print("EMOTION ANALYSIS COMPLETED!")
+
 
 if __name__ == '__main__':
 
