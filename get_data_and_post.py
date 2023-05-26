@@ -28,17 +28,25 @@ def get_tweets_mongo(start_time=None, end_time=None, max_results=100):
     
     client = get_client()
 
+    terms = []
+
     for word in search_words:
-        query = f"\"{word}\" -is:retweet lang:en" # to account for phrases (example: "artificial intelligence")
+        if len(word.split()) > 1:
+            terms.append('"' + word + '"') # to account for phrases (example: "artificial intelligence")
+        else:
+            terms.append(word)
 
-        search_word_dict = {'search_word': word}
-        source_dict = {'source': 'Twitter'}
-        date = datetime.utcnow().strftime(ymd) # check if we define this here or leave it as a global variable
-        extracted_at_dict = {'extracted_at': date}
+    query_terms = ' '.join(terms)
 
-        start = time.time()
+    query = f"({query_terms}) -is:retweet lang:en"
+
+    source_dict = {'source': 'Twitter'}
+    date = datetime.utcnow().strftime(ymd) # check if we define this here or leave it as a global variable
+    extracted_at_dict = {'extracted_at': date}
+
+    start = time.time()
             
-        for tweet in tweepy.Paginator(
+    for tweet in tweepy.Paginator(
                     client.search_recent_tweets, 
                     query=query, 
                     start_time=start_time, 
@@ -46,11 +54,11 @@ def get_tweets_mongo(start_time=None, end_time=None, max_results=100):
                     max_results=max_results, 
                     tweet_fields=['lang', 'created_at', 'public_metrics']).flatten():
 
-            print(tweet.id)
-            end = time.time()
-            print(str((end - start)/60) + " minutes")
-            data = {**tweet.data, **source_dict, **search_word_dict, **extracted_at_dict} # the data attribute of each tweet is a dictionary
-            data_twitter.insert_one(data)
+        print(tweet.id)
+        end = time.time()
+        print(str((end - start)/60) + " minutes")
+        data = {**tweet.data, **source_dict, **extracted_at_dict} # the data attribute of each tweet is a dictionary
+        data_twitter.insert_one(data)
 
 
 today = datetime.today().strftime(ymd)
@@ -76,7 +84,7 @@ def post_data(tenant, collection):
 
 analysis_per_tenant = get_analysis()
 ### START TEST ###
-del analysis_per_tenant['3201246a-67d0-4062-a387-39bc4558b3e1'][0:4] # to use only the MY_TEST analysis
+del analysis_per_tenant['3201246a-67d0-4062-a387-39bc4558b3e1'][0:6] # to use only the MY_TEST_3 analysis
 ### END TEST ###
 
 for tenant in analysis_per_tenant.keys():
@@ -111,6 +119,6 @@ if __name__ == '__main__':
     #print(search_words)
 
     #print(mongo_client.list_database_names())
-    print(db.list_collection_names())
+    #print(db.list_collection_names())
     
     print(data_twitter.count_documents({}))

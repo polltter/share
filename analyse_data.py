@@ -186,23 +186,20 @@ def post_emo_daily(tenant, collection):
     response = requests.post(emo_daily_url, headers=headers, data=data)
 
     print(response.status_code)
-    print(response.json())
+    #print(response.json())
 
 
 analysis_per_tenant = get_analysis()
 ### START TEST ###
-del analysis_per_tenant['3201246a-67d0-4062-a387-39bc4558b3e1'][0:4] # to use only the MY_TEST analysis
+del analysis_per_tenant['3201246a-67d0-4062-a387-39bc4558b3e1'][0:6] # to use only the MY_TEST_3 analysis
 ### END TEST ###
 
 for tenant in analysis_per_tenant.keys():
     
     for analysis in analysis_per_tenant[tenant]:
 
-        company_name = analysis[1]
-        ### START TEST ###
-        #db = mongo_client[company_name]
-        db = mongo_client["MY_TEST"] # test database
-        ### END TEST ###
+        analysis_name = analysis[1]
+        db = mongo_client[analysis_name]
 
         ### GET DATA TO ANALYSE ###
         df_data = load_data(tenant)
