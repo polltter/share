@@ -23,8 +23,9 @@ def get_client():
 
 
 ymd = '%Y-%m-%d'
+language = 'en' # this will be defined by the client and will come frome somewhere else
 
-def get_tweets_mongo(start_time=None, end_time=None, max_results=100):
+def get_tweets_mongo(start_time=None, end_time=None, max_results=100, lang=language):
     
     client = get_client()
 
@@ -38,7 +39,7 @@ def get_tweets_mongo(start_time=None, end_time=None, max_results=100):
 
     query_terms = ' '.join(terms)
 
-    query = f"({query_terms}) -is:retweet lang:en"
+    query = f"({query_terms}) -is:retweet lang:{lang}"
 
     source_dict = {'source': 'Twitter'}
     date = datetime.utcnow().strftime(ymd) # check if we define this here or leave it as a global variable
