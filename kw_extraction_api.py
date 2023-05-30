@@ -10,9 +10,12 @@ from datetime import datetime
 import pandas as pd
 
 
-def extract_kw(df):
-   
-    corpus = textacy.Corpus("en_core_web_sm", df['text'])
+def extract_kw(df, lang):
+
+    if lang == 'pt':
+        corpus = textacy.Corpus("pt_core_news_sm", df['text'])
+    else:
+        corpus = textacy.Corpus("en_core_web_sm", df['text'])
 
     kw_weights = Counter()
 
@@ -34,7 +37,7 @@ def extract_kw(df):
     return kw_weights
 
 
-def clean_kw(df):
+def clean_kw(df, lang):
     
     regex_pattern = re.compile(pattern = "["
         u"\U0001F600-\U0001F64F"  # emoticons
@@ -46,7 +49,7 @@ def clean_kw(df):
 
     kw_weights_clean = {}
 
-    for kw, weight in extract_kw(df).items():
+    for kw, weight in extract_kw(df, lang).items():
         # exclude kw with handles, links and n-grams with n > 3
         if not (kw.startswith('@') or 'http' in kw) and len(kw.split()) < 4:
             # exclude kw with emojis
