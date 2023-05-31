@@ -271,10 +271,10 @@ for tenant in analysis_per_tenant.keys():
         sentiment_daily = db['sentiment_daily'] # collection sentiment_daily
         post_sent_daily(tenant, sentiment_daily)
         print("SENTIMENT ANALYSIS COMPLETED!")
-        """
+        
         ### EMOTION ANALYSIS ###
         print("RUNNING EMOTION ANALYSIS...")
-        ml_emotions_results = ml_emotions(df, language)
+        ml_emotions_results = ml_emotions(df, language, source)
         get_emotions(db, ml_emotions_results)
 
         emotions = db['emotions'] # collection emotions
@@ -286,7 +286,7 @@ for tenant in analysis_per_tenant.keys():
         emotions_daily = db['emotions_daily'] # collection emotions_daily
         post_emo_daily(tenant, emotions_daily)
         print("EMOTION ANALYSIS COMPLETED!")
-"""
+
 
 if __name__ == '__main__':
 

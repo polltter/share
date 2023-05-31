@@ -4,6 +4,8 @@ import pandas as pd
 
 from datetime import datetime
 
+import spacy
+
 
 def tweets_translation(df, model="Helsinki-NLP/opus-mt-mul-en"):
     
@@ -21,16 +23,67 @@ def tweets_translation(df, model="Helsinki-NLP/opus-mt-mul-en"):
     return df_tr
 
 
-def ml_emotions(df, lang, model="j-hartmann/emotion-english-distilroberta-base"):
+def sentences(text):
+    
+    nlp = spacy.load("pt_core_news_sm")
+    doc = nlp(text)
+    
+    return [sent.text for sent in doc.sents]
+
+
+def news_translation(df, model="Helsinki-NLP/opus-mt-mul-en"):
+    
+    df_tr = df.copy()
+    
+    translations = []
+    classifier = pipeline("translation", model)
+    
+    df_tr['sentences'] = df_tr['text'].map(sentences)
+
+    for text in df_tr['sentences']:
+
+        news = []
+        translation_result = classifier(text)
+
+        for element in translation_result:
+            news.append(element['translation_text'])
+
+        translations.append(' '.join(news))
+    
+    df_tr['translation'] = pd.DataFrame(translations)
+    
+    return df_tr
+
+
+def reduce_text(text):
+    
+    text = text[0:2000]
+    
+    return text
+
+
+def ml_emotions(df, lang, source, model="j-hartmann/emotion-english-distilroberta-base"):
 
     classifier = pipeline("text-classification", model)
 
     if lang =='pt':
-        df_ml = tweets_translation(df)
-        emotion_analysis = classifier(df_ml['translation'].tolist(), top_k=3) # top_k=3 to get the scores for the top-3 emotions
+        if source == 'Twitter':
+            df_ml = tweets_translation(df)
+            emotion_analysis = classifier(df_ml['translation'].tolist(), top_k=3) # top_k=3 to get the scores for the top-3 emotions
+            
+        if source == 'news':
+            df_ml = news_translation(df)
+            df_ml['translation_short'] = df_ml['translation'].map(reduce_text)
+            emotion_analysis = classifier(df_ml['translation_short'].tolist(), top_k=3)
+    
     else:
-        df_ml = df.copy()
-        emotion_analysis = classifier(df_ml['text'].tolist(), top_k=3) # top_k=3 to get the scores for the top-3 emotions
+        if source == 'Twitter':
+            df_ml = df.copy()
+            emotion_analysis = classifier(df_ml['text'].tolist(), top_k=3)
+
+        if source == 'news':
+            df_ml['text_short'] = df_ml['text'].map(reduce_text)
+            emotion_analysis = classifier(df_ml['text_short'].tolist(), top_k=3)
 
     df_ml['emotion'] = pd.Series(emotion_analysis)
     df_ml['top1_emotion'] = df_ml['emotion'].map(lambda x: x[0]['label'])
