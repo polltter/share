@@ -5,12 +5,32 @@ import pandas as pd
 from datetime import datetime
 
 
-def ml_emotions(df, model="j-hartmann/emotion-english-distilroberta-base"):
+def tweets_translation(df, model="Helsinki-NLP/opus-mt-mul-en"):
+    
+    df_tr = df.copy()
+    
+    tweets_translation = []
+    classifier = pipeline("translation", model)
 
-    df_ml = df.copy()
+    for tweet in df_tr['text']:
+        translation_result = classifier(tweet)
+        tweets_translation.append({'translation': translation_result[0]['translation_text']})
+        
+    df_tr['translation'] = pd.DataFrame(tweets_translation)
+    
+    return df_tr
+
+
+def ml_emotions(df, lang, model="j-hartmann/emotion-english-distilroberta-base"):
 
     classifier = pipeline("text-classification", model)
-    emotion_analysis = classifier(df_ml['text'].tolist(), top_k=3) # top_k=3 to get the scores for the top-3 emotions
+
+    if lang =='pt':
+        df_ml = tweets_translation(df)
+        emotion_analysis = classifier(df_ml['translation'].tolist(), top_k=3) # top_k=3 to get the scores for the top-3 emotions
+    else:
+        df_ml = df.copy()
+        emotion_analysis = classifier(df_ml['text'].tolist(), top_k=3) # top_k=3 to get the scores for the top-3 emotions
 
     df_ml['emotion'] = pd.Series(emotion_analysis)
     df_ml['top1_emotion'] = df_ml['emotion'].map(lambda x: x[0]['label'])

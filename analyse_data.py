@@ -206,7 +206,7 @@ for tenant in analysis_per_tenant.keys():
         df_data = load_data(tenant)
 
         df = load_tweets(df_data, language)
-        
+        """
         ### EXTRACT KEYWORDS ###
         print("EXTRACTING KEYWORDS...")
         kw = clean_kw(df, language)
@@ -224,7 +224,7 @@ for tenant in analysis_per_tenant.keys():
         
         ### SENTIMENT ANALYSIS ###
         print("RUNNING SENTIMENT ANALYSIS...")
-        ml_sent_results = ml_sent(df,language)
+        ml_sent_results = ml_sent(df, language)
         get_sentiment(db, ml_sent_results)
 
         sentiment = db['sentiment'] # collection sentiment
@@ -239,7 +239,7 @@ for tenant in analysis_per_tenant.keys():
         """
         ### EMOTION ANALYSIS ###
         print("RUNNING EMOTION ANALYSIS...")
-        ml_emotions_results = ml_emotions(df)
+        ml_emotions_results = ml_emotions(df, language)
         get_emotions(db, ml_emotions_results)
 
         emotions = db['emotions'] # collection emotions
@@ -251,7 +251,7 @@ for tenant in analysis_per_tenant.keys():
         emotions_daily = db['emotions_daily'] # collection emotions_daily
         post_emo_daily(tenant, emotions_daily)
         print("EMOTION ANALYSIS COMPLETED!")
-"""
+
 
 if __name__ == '__main__':
 
