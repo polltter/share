@@ -5,7 +5,12 @@ import pandas as pd
 from datetime import datetime
 
 
-def ml_sent(df, model="cardiffnlp/twitter-roberta-base-sentiment-latest"):
+def ml_sent(df, lang):
+
+    if lang == 'pt':
+        model="cardiffnlp/twitter-xlm-roberta-base-sentiment"
+    else:
+        model="cardiffnlp/twitter-roberta-base-sentiment-latest"
     
     df_ml = df.copy()
 

@@ -192,7 +192,7 @@ def post_emo_daily(tenant, collection):
 analysis_per_tenant = get_analysis()
 ### START TEST ###
 del analysis_per_tenant['3201246a-67d0-4062-a387-39bc4558b3e1'][0:6] # to use only the MY_TEST_3 analysis
-language = 'en' # this will be defined by the client and will come frome somewhere else
+language = 'en' # this will be defined by the client and will come from somewhere else
 ### END TEST ###
 
 for tenant in analysis_per_tenant.keys():
@@ -221,10 +221,10 @@ for tenant in analysis_per_tenant.keys():
         kw_daily = db['kw_daily'] # collection kw_daily
         post_kw_daily(tenant, kw_daily)
         print("KEYWORD EXTRACTION COMPLETED!")
-        """
+        
         ### SENTIMENT ANALYSIS ###
         print("RUNNING SENTIMENT ANALYSIS...")
-        ml_sent_results = ml_sent(df)
+        ml_sent_results = ml_sent(df,language)
         get_sentiment(db, ml_sent_results)
 
         sentiment = db['sentiment'] # collection sentiment
@@ -236,7 +236,7 @@ for tenant in analysis_per_tenant.keys():
         sentiment_daily = db['sentiment_daily'] # collection sentiment_daily
         post_sent_daily(tenant, sentiment_daily)
         print("SENTIMENT ANALYSIS COMPLETED!")
-        
+        """
         ### EMOTION ANALYSIS ###
         print("RUNNING EMOTION ANALYSIS...")
         ml_emotions_results = ml_emotions(df)
