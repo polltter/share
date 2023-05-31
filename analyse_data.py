@@ -7,6 +7,9 @@ import pandas as pd
 import json
 from bson.json_util import dumps
 
+import re
+import string
+
 from get_client_info import get_analysis
 from kw_extraction_api import clean_kw, get_keywords, agg_kw_daily
 from sentiment_analysis_api import ml_sent, get_sentiment, agg_sentiment_daily
@@ -53,6 +56,31 @@ def load_tweets(df, language='en'):
     df_tweets.drop(['public_metrics', 'edit_history_tweet_ids'], axis=1, inplace=True)
 
     return df_tweets
+
+
+def check_all_words(search_words, text):
+    
+    i = 0
+    for word in search_words:
+        if re.search(fr"(\b|[{string.punctuation}]){word}(\b|[{string.punctuation}]$)", text, flags=re.I):
+            i += 1
+
+    if i == len(search_words):
+        return True
+    else:
+        return False
+
+
+def load_news(df, search_words):
+
+    df_news = df.copy()
+
+    df_news['text_with_words'] = df_news['text'].map(lambda x: check_all_words(search_words, x))
+
+    df_news_words = df_news[df_news['text_with_words']].copy()
+    df_news_words.reset_index(inplace=True, drop=True)
+
+    return df_news_words
 
 
 my_query = {"extracted_at": {"$eq": today}}
@@ -193,6 +221,7 @@ analysis_per_tenant = get_analysis()
 ### START TEST ###
 del analysis_per_tenant['3201246a-67d0-4062-a387-39bc4558b3e1'][0:6] # to use only the MY_TEST_3 analysis
 language = 'en' # this will be defined by the client and will come from somewhere else
+source ='Twitter' # this will be defined by the client and will come from somewhere else
 ### END TEST ###
 
 for tenant in analysis_per_tenant.keys():
@@ -202,11 +231,17 @@ for tenant in analysis_per_tenant.keys():
         analysis_name = analysis[1]
         db = mongo_client[analysis_name]
 
+        search_words = analysis[2]
+
         ### GET DATA TO ANALYSE ###
         df_data = load_data(tenant)
 
-        df = load_tweets(df_data, language)
-        """
+        if source == 'Twitter': 
+            df = load_tweets(df_data, language)
+
+        if source == 'news':
+            df = load_news(df_data, search_words)
+        
         ### EXTRACT KEYWORDS ###
         print("EXTRACTING KEYWORDS...")
         kw = clean_kw(df, language)
@@ -224,7 +259,7 @@ for tenant in analysis_per_tenant.keys():
         
         ### SENTIMENT ANALYSIS ###
         print("RUNNING SENTIMENT ANALYSIS...")
-        ml_sent_results = ml_sent(df, language)
+        ml_sent_results = ml_sent(df, language, source)
         get_sentiment(db, ml_sent_results)
 
         sentiment = db['sentiment'] # collection sentiment
@@ -251,7 +286,7 @@ for tenant in analysis_per_tenant.keys():
         emotions_daily = db['emotions_daily'] # collection emotions_daily
         post_emo_daily(tenant, emotions_daily)
         print("EMOTION ANALYSIS COMPLETED!")
-
+"""
 
 if __name__ == '__main__':
 

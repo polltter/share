@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime
 
 
-def ml_sent(df, lang):
+def ml_sent(df, lang, source):
 
     if lang == 'pt':
         model="cardiffnlp/twitter-xlm-roberta-base-sentiment"
@@ -15,7 +15,12 @@ def ml_sent(df, lang):
     df_ml = df.copy()
 
     classifier = pipeline("sentiment-analysis", model)
-    sentiment_analysis = classifier(df_ml['text'].tolist(), top_k=3) # top_k=3 to get the scores for all the possible labels
+
+    if source == 'Twitter':
+        sentiment_analysis = classifier(df_ml['text'].tolist(), top_k=3) # top_k=3 to get the scores for all the possible labels
+
+    if source == 'news':
+        sentiment_analysis = classifier(df_ml['title'].tolist(), top_k=3) # top_k=3 to get the scores for all the possible labels
 
     df_ml['sentiment'] = pd.Series(sentiment_analysis)
     df_ml['top_sentiment'] = df_ml['sentiment'].map(lambda sentiment: max(sentiment, key=lambda x: x['score'])) # top sentiment
