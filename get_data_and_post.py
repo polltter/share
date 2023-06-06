@@ -69,7 +69,7 @@ def post_data(tenant, collection):
 
     headers = {'Accept': 'application/json', 
                'Content-Type': 'application/json', 
-               'Authorization': 'Bearer 2|IIvhcPW0VLmm11NXAuEVOxQMI1GLdyJ8cUntGzBB', 
+               'Authorization': 'Bearer 2|IIvhcPW0VLmm11NXAuEVOxQMI1GLdyJ8cUntGzBB',
                'X-Tenant': tenant}
     
     my_query = {"extracted_at": {"$eq": today}}
@@ -77,9 +77,9 @@ def post_data(tenant, collection):
     data = json.dumps({"ainfo_id": analysis[0], "data": dumps(cursor), "extracted_at": today})
     # should I define extracted_at or is it automatically set?
     
-    response = requests.post(raw_url, headers=headers, data=data)
+    # response = requests.post(raw_url, headers=headers, data=data)
     
-    print(response.status_code)
+    # print(response.status_code)
     #print(response.json())
 
 

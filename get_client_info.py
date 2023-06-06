@@ -71,5 +71,5 @@ def get_analysis():
 
 if __name__ == '__main__':
 
-    print(get_tenants())
-    #print(get_analysis())
+    # print(get_tenants())
+    print(get_analysis())
