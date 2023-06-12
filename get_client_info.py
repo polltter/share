@@ -5,7 +5,8 @@ from collections import defaultdict
 
 def get_tenants():
 
-    tenants_url = "https://esg-maturity.com/api/v1/tenants"
+    # tenants_url = "https://esg-maturity.com/api/v1/tenants"
+    tenants_url = 'http://saas.test/api/v1/tenants/' #ambiente de teste
 
     path = "/7XOfemJW0VLmm11NXAuEVOCtOzZgpomqU8JGXkqJ17EAuswHCwU2/?feature=reputation"
 
@@ -27,6 +28,7 @@ def get_analysis():
     analysis_per_tenant = defaultdict(list)
 
     analysis_url = "https://esg-maturity.com/api/v1/reputational/analysis-info"
+    # analysis_url = "http://saas.test/api/v1/reputational/analysis-info" #amb teste
 
     list_of_tenants = get_tenants()
 

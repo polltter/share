@@ -13,12 +13,14 @@ import requests
 from get_client_info import get_analysis
 
 
-mongo_client = pymongo.MongoClient('mongodb://localhost:27017/')
+# mongo_client = pymongo.MongoClient('mongodb://localhost:27017/')
+mongo_client = pymongo.MongoClient('mongodb://root:root@mongo:27017/')
 
 
 def get_client():
     """Returns Twitter API v2 Client object."""
     client = tweepy.Client(bearer_token=config.BEARER_TOKEN)
+    # client = tweepy.Client(bearer_token="AAAAAAAAAAAAAAAAAAAAAJEIeAEAAAAAcK0tTwaqVDd18t%2F00VbhIUASHJE%3D9Syfx90O9cOEbBi9Nr8OhUq45EsxhaiK48Wsuy151lU6AIsEFd")
     return client
 
 
@@ -89,22 +91,22 @@ del analysis_per_tenant['3201246a-67d0-4062-a387-39bc4558b3e1'][0:6] # to use on
 ### END TEST ###
 
 for tenant in analysis_per_tenant.keys():
-    
+
     for analysis in analysis_per_tenant[tenant]:
-        
+
         analysis_name = analysis[1]
         db = mongo_client[analysis_name]
-        
+
         search_words = analysis[2]
-        
+
         ### TWITTER ###
         #db['data_twitter'].drop() # in case we need to delete this collection
         data_twitter = db['data_twitter'] # collection data_twitter
-
+        print(data_twitter)
         # get desired tweets for yesterday
         start_time=(datetime.today()-timedelta(days=1)).strftime(ymd) + 'T00:00:00Z' # yesterday at 00:00:00
         end_time=(datetime.today()-timedelta(days=1)).strftime(ymd) + 'T23:59:59Z' # yesterday at 23:59:59
-        
+
         get_tweets_mongo(start_time=start_time, end_time=end_time)
 
         post_data(tenant, data_twitter)
@@ -121,5 +123,7 @@ if __name__ == '__main__':
 
     #print(mongo_client.list_database_names())
     #print(db.list_collection_names())
-    
+
+
+
     print(data_twitter.count_documents({}))

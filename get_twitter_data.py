@@ -1,4 +1,4 @@
-#import config
+import config
 import os
 
 import pymongo
@@ -12,13 +12,13 @@ from datetime import datetime, timedelta
 
 def get_client():
     """Returns Twitter API v2 Client object."""
-    #client = tweepy.Client(bearer_token=config.BEARER_TOKEN)
-    client = tweepy.Client(bearer_token=os.environ.get('TWITTER_TOKEN'))
+    client = tweepy.Client(bearer_token=config.BEARER_TOKEN)
+    # client = tweepy.Client(bearer_token="AAAAAAAAAAAAAAAAAAAAAJEIeAEAAAAAcK0tTwaqVDd18t%2F00VbhIUASHJE%3D9Syfx90O9cOEbBi9Nr8OhUq45EsxhaiK48Wsuy151lU6AIsEFd")
     return client
 
 
-#mongo_client=pymongo.MongoClient('mongodb://localhost:27017/')
-mongo_client=pymongo.MongoClient('mongodb://root:root@mongo:27017/')
+# mongo_client=pymongo.MongoClient('mongodb://localhost:27017/')
+mongo_client = pymongo.MongoClient('mongodb://root:root@mongo:27017/')
 
 def get_search_words(company):
     """Gets list of words of interest, defined by each company,
@@ -29,7 +29,7 @@ def get_search_words(company):
     :return: A list of words
     :rtype: list
     """
-    #db = mongo_client['rep_analysis_test'] # database rep_analysis_test
+    # db = mongo_client['rep_analysis_test'] # database rep_analysis_test
     db = mongo_client['central'] # database central
     client_info = db['client_info'] # collection client_info
 
@@ -97,6 +97,10 @@ def get_tweets_mongo(company, start_time=None, end_time=None, max_results=100):
     db = mongo_client['central'] # database central
     data_twitter = db['data_twitter'] # collection data_twitter
     #data_twitter = db['data_twitter_test_extracted_at'] # test collection
+
+
+    l = get_search_words(company)
+    print(l)
 
     for word in get_search_words(company):
         query = word + " -is:retweet lang:en"

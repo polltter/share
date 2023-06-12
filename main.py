@@ -20,7 +20,7 @@ def get_data():
     start = (datetime.utcnow()-timedelta(minutes=15, seconds=10)).strftime('%Y-%m-%dT%H:%M:%S') + 'Z'
     end = (datetime.utcnow()-timedelta(seconds=10)).strftime('%Y-%m-%dT%H:%M:%S') + 'Z' # 'end_time' must be a minimum of 10 seconds prior to the request time
 
-    #get_tweets_mongo(company="McDonald's", start_time=start, end_time=end)
+    # get_tweets_mongo(company="McDonald's", start_time=start, end_time=end)
     print(f"Data from Twitter successfully stored in MongoDB at {end}.")
 
 
@@ -28,10 +28,10 @@ def analyse_data():
 
     yesterday = (datetime.utcnow()-timedelta(days=1)).strftime('%Y-%m-%d')
 
-    #get_keywords(clean_kw())
+    get_keywords(clean_kw())
     print(f"Most relevant keywords successfully extracted for data extracted on {yesterday}.")
 
-    #get_sentiment(vader_sent(load_tweets_mongo(yesterday)))
+    # get_sentiment(vader_sent(load_tweets_mongo(yesterday)))
     print(f"Sentiment Analysis successfully performed for data extracted on {yesterday}.")
 
 
@@ -39,7 +39,7 @@ def aggregate_data_daily():
 
     yesterday = (datetime.utcnow()-timedelta(days=1)).strftime('%Y-%m-%d')
     
-    #agg_kw_daily(yesterday)
+    agg_kw_daily(yesterday)
     print(f"Keyword extraction results successfully aggregated for {yesterday}.")
 
     #agg_sentiment_daily(yesterday)
@@ -128,6 +128,7 @@ def main():
 
 if __name__ == '__main__':
 
-    main()
-
+    # main()
+    get_data()
+    analyse_data()
     print('Success!')
