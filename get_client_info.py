@@ -1,19 +1,22 @@
 import requests
-
+import json
 from collections import defaultdict
+
+
+API_URL = 'http://saas.test'
 
 
 def get_tenants():
 
-    # tenants_url = "https://esg-maturity.com/api/v1/tenants"
-    tenants_url = 'http://saas.test/api/v1/tenants/' #ambiente de teste
+    tenants_url_dev = f"{API_URL}/api/v1/tenants/7XOfemJW0VLmm11NXAuEVOCtOzZgpomqU8JGXkqJ17EAuswHCwU2/?feature=reputation"
+
 
     path = "/7XOfemJW0VLmm11NXAuEVOCtOzZgpomqU8JGXkqJ17EAuswHCwU2/?feature=reputation"
 
     headers = {'Accept': 'application/json', 
                'Authorization': 'Bearer 2|IIvhcPW0VLmm11NXAuEVOxQMI1GLdyJ8cUntGzBB'}
 
-    response = requests.get(tenants_url + path, headers=headers)
+    response = requests.get(tenants_url_dev + path, headers=headers)
 
     list_of_tenants = []
 
@@ -27,8 +30,8 @@ def get_analysis():
 
     analysis_per_tenant = defaultdict(list)
 
-    analysis_url = "https://esg-maturity.com/api/v1/reputational/analysis-info"
-    # analysis_url = "http://saas.test/api/v1/reputational/analysis-info" #amb teste
+    # analysis_url = "https://esg-maturity.com/api/v1/reputational/analysis-info"
+    analysis_url = f"{API_URL}/api/v1/reputational/analysis-info"
 
     list_of_tenants = get_tenants()
 
@@ -40,8 +43,10 @@ def get_analysis():
 
         response = requests.get(analysis_url, headers=headers)
         
-        #print(response.json())
-        
+        print(response.content)
+        print(analysis_url)
+        # return response.json()
+
         list_of_analysis_ids = []
         
         for analysis in response.json()['data']:
@@ -60,18 +65,26 @@ def get_analysis():
 
             response = requests.get(analysis_url + path, headers=headers)
 
-            #print(response.json())
-            
-            analysis_per_tenant[tenant].append((analysis_id, 
-                                                response.json()['data']['name'], 
-                                                response.json()['data']['search_terms']))
+            #print("analysis_id\n", response.json())
+            analysis_per_tenant[tenant].append({
+                    'id': analysis_id,
+                    'name': response.json()['data']['name'],
+                    'search_terms': response.json()['data']['search_terms'],
+                    })
             # dic with the format: {tenant: [(analysis_id, analysis_name, [search_terms])]}
             # in the future we are also interested in storing further info like language, etc.
 
     return analysis_per_tenant
 
+def get_analysis_offline():
+    with open("client.json", 'r') as f:
+        data = json.load(f)
+    f.close()
+    return data
 
 if __name__ == '__main__':
+    l = get_analysis()
+    # with open("client.json", 'w') as f:
+    #     json.dump(l, f, indent=2)
+    # print(l)
 
-    # print(get_tenants())
-    print(get_analysis())
