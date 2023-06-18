@@ -9,11 +9,12 @@ import pandas as pd
 import textacy
 import textacy.resources
 from collections import Counter
+import os
 from transformers import pipeline
 
 textacy.set_doc_extensions("extract")
-API_URL = 'http://saas.test'
-
+if os.getenv("APP_URL") != None: API_URL = os.getenv("APP_URL") 
+else:  API_URL = 'http://saas.test'
 
 class ReputationalAnalysi:
 
@@ -309,13 +310,14 @@ class ReputationalAnalysi:
 
 
 if __name__ == '__main__':
-    tenants = get_analysis()
+    print("APP_URL: ", API_URL, " ENV: ", os.getenv("APP_URL"))
+    # tenants = get_analysis()
 
-    for tenant in tenants:
-        print(tenant)
-        analysi = ReputationalAnalysi(tenant, tenants[tenant], "", "", ["data/economico.json", "data/exame.json"])
-        analysi.dataframe = pd.read_pickle('analise_feita.pickle')
-        # analysi.sentiment()
-        # analysi.extract_keywords()
-        # analysi.emotion()
-        analysi.save()
+    # for tenant in tenants:
+    #     print(tenant)
+    #     analysi = ReputationalAnalysi(tenant, tenants[tenant], "", "", ["data/economico.json", "data/exame.json"])
+    #     analysi.dataframe = pd.read_pickle('analise_feita.pickle')
+    #     # analysi.sentiment()
+    #     # analysi.extract_keywords()
+    #     # analysi.emotion()
+    #     analysi.save()

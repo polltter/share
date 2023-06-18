@@ -1,9 +1,11 @@
 import requests
 import json
 from collections import defaultdict
+import os
 
 
-API_URL = 'http://saas.test'
+if os.getenv("APP_URL"): API_URL = os.getenv("APP_URL") 
+else:  API_URL = 'http://saas.test'
 
 
 def get_tenants():
