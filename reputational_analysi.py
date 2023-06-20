@@ -16,6 +16,10 @@ textacy.set_doc_extensions("extract")
 if os.getenv("APP_URL") != None: API_URL = os.getenv("APP_URL")
 else:  API_URL = 'http://saas.test'
 
+def log(text: str):
+    with open("/data/log.txt", 'a') as file:
+        file.write(f"[{datetime.date.today()}] {text}\n")
+
 class ReputationalAnalysi:
 
     def __init__(self, tenant_id, clients, collection, analysis, files: list):
@@ -63,24 +67,28 @@ class ReputationalAnalysi:
         return text_en
 
     def __find_emotions(self, text):
-        print("Finding emotions")
+        print("Finding emotions..")
         model = "j-hartmann/emotion-english-distilroberta-base"
         classifier = pipeline("text-classification", model, truncation=True, padding=True)
         return classifier(text, top_k=3)
 
     def emotion(self):
-        self.dataframe['emotion'] = self.dataframe.apply(lambda x: self.__find_emotions(x['text_en']), axis=1)
+        if not self.dataframe.empty:
+            self.dataframe['emotion'] = self.dataframe.apply(lambda x: self.__find_emotions(x['text_en']), axis=1)
+            log('Emotion Analysis successfully')
 
     def __sentiment_analysis(self, text):
-        print('Analysing sentiment...')
+        print("Finding sentiment...")
         classifier = pipeline(model="mrm8488/distilroberta-finetuned-financial-news-sentiment-analysis",
                               truncation=True, padding=True)
         sentiment_analysis = classifier(text, top_k=3)
         return sentiment_analysis
 
     def sentiment(self):
-        self.dataframe['sentiment'] = self.dataframe.apply(lambda x: self.__sentiment_analysis(x['text_en']), axis=1)
-
+        if not self.dataframe.empty:
+            self.dataframe['sentiment'] = self.dataframe.apply(lambda x: self.__sentiment_analysis(x['text_en']), axis=1)
+            log('Sentiment Analysis successfully')
+            
     def __keywords(self, text, lang='pt'):
         print('finding key_words...')
         if lang == 'pt':
@@ -105,10 +113,13 @@ class ReputationalAnalysi:
         return {key: val for key, val in kw_weights.items() if val > 0}
 
     def extract_keywords(self):
-        self.dataframe['kw_weights'] = self.dataframe.apply(lambda x: self.__keywords(x['text'], 'pt'), axis=1)
-
+        if not self.dataframe.empty:
+            self.dataframe['kw_weights'] = self.dataframe.apply(lambda x: self.__keywords(x['text'], 'pt'), axis=1)
+            log('Most relevant keywords successfully extracted')
+            
     def __build_objs_sentiment(self):
         clients_data = {}
+        print("sentiment: ", self.dataframe.sentiment)
         for c, s, d in zip(self.dataframe.clients, self.dataframe.sentiment, self.dataframe.date_scrap):
             for obj in c:
                 try:
@@ -261,6 +272,8 @@ class ReputationalAnalysi:
             }
 
     def save(self):
+        if self.dataframe.empty:
+            return
         analysis = [
             list(self.__build_data_setiment()),
             list(self.__build_data_emotion()),
@@ -297,14 +310,22 @@ class ReputationalAnalysi:
 
     def load_file(self, files):
         self.dataframe = pd.DataFrame(columns=["title", "text", "date_news", "date_scrap", "url", "lang", "clients"])
+        
         for file in files:
-            df = pd.read_json(file)
-            df['clients'] = df['text'].apply(self.filter_search_terms)
-            self.dataframe = pd.concat([self.dataframe, df[df['clients'].map(lambda x: len(x) > 0)]], axis=0)
-        self.dataframe['text_en'] = self.dataframe.apply(lambda x: self.translate(x['text'], x['lang']), axis=1)
-        self.dataframe['text'] = self.dataframe['text'].apply(lambda x: self.clean_text(x))
-        self.dataframe['text_en'] = self.dataframe['text_en'].apply(lambda x: self.clean_text(x))
-        self.dataframe['title_en'] = self.dataframe.apply(lambda x: self.translate(x['title'], x['lang']), axis=1)
+            try: 
+                df = pd.read_json(file)
+                df['clients'] = df['text'].apply(self.filter_search_terms)
+                self.dataframe = pd.concat([self.dataframe, df[df['clients'].map(lambda x: len(x) > 0)]], axis=0)
+            except Exception as e:
+                print('\033[91m', 'load file:', str(e), '\033[0m')  
+        
+        try:          
+            self.dataframe['text_en'] = self.dataframe.apply(lambda x: self.translate(x['text'], x['lang']), axis=1)
+            self.dataframe['text'] = self.dataframe['text'].apply(lambda x: self.clean_text(x))
+            self.dataframe['text_en'] = self.dataframe['text_en'].apply(lambda x: self.clean_text(x))
+            self.dataframe['title_en'] = self.dataframe.apply(lambda x: self.translate(x['title'], x['lang']), axis=1)
+        except Exception as e:
+            print('\033[91m', 'dataframe:', str(e), '\033[0m')    
 
 
 if __name__ == '__main__':
