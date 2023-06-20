@@ -9,11 +9,12 @@ import pandas as pd
 import textacy
 import textacy.resources
 from collections import Counter
+import os
 from transformers import pipeline
 
 textacy.set_doc_extensions("extract")
-API_URL = 'http://saas.test'
-
+if os.getenv("APP_URL") != None: API_URL = os.getenv("APP_URL")
+else:  API_URL = 'http://saas.test'
 
 class ReputationalAnalysi:
 
