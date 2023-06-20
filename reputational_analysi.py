@@ -30,6 +30,7 @@ class ReputationalAnalysi:
         text = emoji.demojize(text)
         # Remove emoji text representations
         text = re.sub(r":[\w_]+:", "", text)
+        #remove tambem o que esta dentro de parantesis curvos e retos
         # Remove non-alphanumeric characters
         text = re.sub(r"[^\w\s]", "", text)
         # Remove excess whitespace
@@ -62,12 +63,9 @@ class ReputationalAnalysi:
 
     def __find_emotions(self, text):
         print("Finding emotions")
-        # corpus = textacy.Corpus("en_core_web_sm", text)
-        # rs = textacy.resources.DepecheMood(lang="en", word_rep="lemma", min_freq=2)
         model = "j-hartmann/emotion-english-distilroberta-base"
         classifier = pipeline("text-classification", model, truncation=True, padding=True)
         return classifier(text, top_k=3)
-        # return rs.get_emotional_valence(corpus.docs[0])
 
     def emotion(self):
         self.dataframe['emotion'] = self.dataframe.apply(lambda x: self.__find_emotions(x['text_en']), axis=1)
@@ -298,14 +296,14 @@ class ReputationalAnalysi:
 
     def load_file(self, files):
         self.dataframe = pd.DataFrame(columns=["title", "text", "date_news", "date_scrap", "url", "lang", "clients"])
-        # for file in files:
-        #     df = pd.read_json(file)
-        #     df['clients'] = df['text'].apply(self.filter_search_terms)
-        #     self.dataframe = pd.concat([self.dataframe, df[df['clients'].map(lambda x: len(x) > 0)]], axis=0)
-        # self.dataframe['text_en'] = self.dataframe.apply(lambda x: self.translate(x['text'], x['lang']), axis=1)
-        # self.dataframe['text'] = self.dataframe['text'].apply(lambda x: self.clean_text(x))
-        # self.dataframe['text_en'] = self.dataframe['text_en'].apply(lambda x: self.clean_text(x))
-        # self.dataframe['title_en'] = self.dataframe.apply(lambda x: self.translate(x['title'], x['lang']), axis=1)
+        for file in files:
+            df = pd.read_json(file)
+            df['clients'] = df['text'].apply(self.filter_search_terms)
+            self.dataframe = pd.concat([self.dataframe, df[df['clients'].map(lambda x: len(x) > 0)]], axis=0)
+        self.dataframe['text_en'] = self.dataframe.apply(lambda x: self.translate(x['text'], x['lang']), axis=1)
+        self.dataframe['text'] = self.dataframe['text'].apply(lambda x: self.clean_text(x))
+        self.dataframe['text_en'] = self.dataframe['text_en'].apply(lambda x: self.clean_text(x))
+        self.dataframe['title_en'] = self.dataframe.apply(lambda x: self.translate(x['title'], x['lang']), axis=1)
 
 
 if __name__ == '__main__':
@@ -314,8 +312,7 @@ if __name__ == '__main__':
     for tenant in tenants:
         print(tenant)
         analysi = ReputationalAnalysi(tenant, tenants[tenant], "", "", ["data/economico.json", "data/exame.json"])
-        analysi.dataframe = pd.read_pickle('analise_feita.pickle')
-        # analysi.sentiment()
-        # analysi.extract_keywords()
-        # analysi.emotion()
+        analysi.sentiment()
+        analysi.extract_keywords()
+        analysi.emotion()
         analysi.save()
