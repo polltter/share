@@ -1,25 +1,33 @@
 import requests
 import json
 from collections import defaultdict
+import os
 
 # API_URL = 'http://saas.test'
-API_URL = 'https://esg-maturity.com'
+# API_URL = 'https://esg-maturity.com'
+if os.getenv("API_URL") is not None:
+    API_URL = os.getenv("API_URL")
+    print('API_URL found ', API_URL)
+else:
+    API_URL = 'http://saas.test'
 
+if os.getenv("BEARER_TOKEN") is not None:
+    BEARER_TOKEN = os.getenv("BEARER_TOKEN")
+    print('BEARER_TOKEN found ', BEARER_TOKEN)
+else:
+    exit('BEARER_TOKEN not found')
 
 def get_tenants():
     tenants_url_dev = f"{API_URL}/api/v1/tenants/7XOfemJW0VLmm11NXAuEVOCtOzZgpomqU8JGXkqJ17EAuswHCwU2/reputation"
 
-    # headers = {'Accept': 'application/json',
-    #            'Authorization': 'Bearer 2|IIvhcPW0VLmm11NXAuEVOxQMI1GLdyJ8cUntGzBB'}
     headers = {'Accept': 'application/json',
-               'Authorization': 'Bearer 3|7XOfemJabZDyJCCtOzZgpomqU8JMRl4gRADZ1HZp'}
+               'Authorization': BEARER_TOKEN}
 
     response = requests.get(tenants_url_dev, headers=headers)
 
     list_of_tenants = []
 
     for tenant in response.json()['data']:
-        # if tenant['email'] == 'test@esg-maturity.com':
         list_of_tenants.append(tenant['tenancy_db_name'].replace('tenant', ''))
 
     return list_of_tenants
@@ -28,7 +36,6 @@ def get_tenants():
 def get_analysis():
     analysis_per_tenant = defaultdict(list)
 
-    # analysis_url = "https://esg-maturity.com/api/v1/reputational/analysis-info"
     analysis_url = f"{API_URL}/api/v1/reputational/analysis-info"
 
     list_of_tenants = get_tenants()
@@ -36,11 +43,8 @@ def get_analysis():
 
     for tenant in list_of_tenants:
 
-        # headers = {'Accept': 'application/json',
-        #            'Authorization': 'Bearer 2|IIvhcPW0VLmm11NXAuEVOxQMI1GLdyJ8cUntGzBB',
-        #            'X-Tenant': tenant}
         headers = {'Accept': 'application/json',
-                   'Authorization': 'Bearer 3|7XOfemJabZDyJCCtOzZgpomqU8JMRl4gRADZ1HZp',
+                   'Authorization': BEARER_TOKEN,
                    'X-Tenant': tenant}
 
         response = requests.get(analysis_url, headers=headers)
@@ -63,11 +67,8 @@ def get_analysis():
         for analysis_id in list_of_analysis_ids:
             path = "/" + str(analysis_id)
 
-            # headers = {'Accept': 'application/json',
-            #            'Authorization': 'Bearer 2|IIvhcPW0VLmm11NXAuEVOxQMI1GLdyJ8cUntGzBB',
-            #            'X-Tenant': tenant}
             headers = {'Accept': 'application/json',
-                       'Authorization': 'Bearer 3|7XOfemJabZDyJCCtOzZgpomqU8JMRl4gRADZ1HZp',
+                       'Authorization': BEARER_TOKEN,
                        'X-Tenant': tenant}
 
             response = requests.get(analysis_url + path, headers=headers)
