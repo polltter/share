@@ -1,6 +1,9 @@
+import os
+import time
 import spacy
-import re
-import emoji
+import translators.server
+from tqdm import tqdm
+
 from get_client_info import *
 import requests
 import datetime
@@ -8,40 +11,73 @@ import translators as ts
 import pandas as pd
 import textacy
 import textacy.resources
+from textacy import preprocessing
 from collections import Counter
-import os
 from transformers import pipeline
+from transformers import logging as transformers_logging
 
+transformers_logging.set_verbosity_error()
 textacy.set_doc_extensions("extract")
-if os.getenv("APP_URL") != None: API_URL = os.getenv("APP_URL")
-else:  API_URL = 'http://saas.test'
+# if os.getenv("APP_URL") != None: API_URL = os.getenv("APP_URL")
+# else:  API_URL = 'http://saas.test'
+API_URL = 'https://esg-maturity.com'
+try:
+    previous_day_dataframe = pd.read_json('scrapers/all/previous_day_data.json')
+except ValueError:
+    previous_day_dataframe = pd.DataFrame(columns=["raw_title", "raw_text", "date_news", "date_scrap", "url", "lang"])
 
-def log(text: str):
-    with open("/data/log.txt", 'a') as file:
-        file.write(f"[{datetime.date.today()}] {text}\n")
+def sort_dict_by_value(d: dict) -> dict:
+    return {k: v for k, v in sorted(d.items(), key=lambda item: item[1], reverse=True)}
+
 
 class ReputationalAnalysi:
 
-    def __init__(self, tenant_id, clients, collection, analysis, files: list):
+    def __init__(self, tenant_id, clients, files: list, global_dataframe, max_articles=None):
         self.tenant = tenant_id
         self.clients = clients
-        self.collection = collection
-        self.analysis = analysis
         self.nlp = spacy.load('pt_core_news_sm')
-        self.load_file(files)
+        self.processed_dataframe = pd.DataFrame(columns=["raw_title", "raw_text", "date_news", "date_scrap", "url",
+                                                         "lang", "clients", "text_en", "title_en", "text", "title",
+                                                         "kw_weights", "sentiment", "emotion"])
+        self.global_dataframe = global_dataframe
+        self.load_file(files, max_articles)
 
-    def clean_text(self, text: str):
-        # Remove emojis
-        text = emoji.demojize(text)
-        # Remove emoji text representations
-        text = re.sub(r":[\w_]+:", "", text)
-        #remove tambem o que esta dentro de parantesis curvos e retos
-        # Remove non-alphanumeric characters
-        text = re.sub(r"[^\w\s]", "", text)
-        # Remove excess whitespace
-        text = re.sub(r"\s+", " ", text)
-        # Convert to lowercase
-        return text.lower()
+    def remove_stopwords(self, text: str) -> str:
+        doc = self.nlp(text)
+        tokenized = [word.text for word in doc if not word.is_stop]
+        return ' '.join(tokenized)
+
+    def remove_noise(self, text: str) -> str:
+        text = text.lower()
+        text = preprocessing.remove.brackets(text)
+        text = preprocessing.remove.punctuation(text)
+        text = preprocessing.normalize.whitespace(text)
+        text = preprocessing.normalize.unicode(text)
+        text = preprocessing.remove.accents(text)
+        text = preprocessing.replace.emojis(text, "")
+        text = preprocessing.replace.hashtags(text, "")
+        text = preprocessing.replace.user_handles(text, "")
+        text = preprocessing.replace.urls(text, "")
+        text = preprocessing.replace.numbers(text, "")
+        return text
+
+    def lemmatize_text(self, text: str) -> str:
+        doc = self.nlp(text)
+        lemma = [word.lemma_ for word in doc]
+        return ' '.join(lemma)
+
+    def prepocess_text(self, text: str, level: list) -> str:
+        if 'all' in level:
+            text = self.remove_stopwords(text)
+            text = self.remove_noise(text)
+            text = self.lemmatize_text(text)
+        if 'stopwords' in level:
+            text = self.remove_stopwords(text)
+        if 'noise' in level:
+            text = self.remove_noise(text)
+        if 'lemmatize' in level:
+            text = self.lemmatize_text(text)
+        return text
 
     def create_text(self, text: str):
         doc = self.nlp(text)
@@ -54,108 +90,134 @@ class ReputationalAnalysi:
         if len(t):
             yield t
 
-    def translate(self, text: str, lang: str = "pt"):
-        print('Translating...')
+    def progress_bar(self, desc: str, func_to_apply, src_col, dest_col):
+        total_articles = len(self.dataframe)
+        pbar = tqdm(total=total_articles, desc=desc)
+
+        def __apply_func(text):
+            nonlocal pbar
+            return_val = func_to_apply(text)
+            pbar.update(1)
+            pbar.set_postfix(analyzed=f"{pbar.n}/{total_articles}")
+            return return_val
+
+        self.dataframe[dest_col] = self.dataframe.apply(lambda x: __apply_func(x[src_col]), axis=1)
+        pbar.close()
+
+    def __translate(self, text: str, lang: str = "pt"):
         text_list = list(self.create_text(text))
         text_en = ''
         try:
             for t in text_list:
-                print(len(t))
                 text_en += ts.translate_text(query_text=t, from_language=lang, to_language='en', translator='google')
+                time.sleep(0.5)
         except TypeError:
-            return self.translate(text)
+            return self.__translate(text)
+        except translators.server.TranslatorError:
+            print('TranslatorError')
+            pass
         return text_en
 
     def __find_emotions(self, text):
-        print("Finding emotions..")
         model = "j-hartmann/emotion-english-distilroberta-base"
         classifier = pipeline("text-classification", model, truncation=True, padding=True)
         return classifier(text, top_k=3)
 
-    def emotion(self):
-        if not self.dataframe.empty:
-            self.dataframe['emotion'] = self.dataframe.apply(lambda x: self.__find_emotions(x['text_en']), axis=1)
-            log('Emotion Analysis successfully')
-
     def __sentiment_analysis(self, text):
-        print("Finding sentiment...")
         classifier = pipeline(model="mrm8488/distilroberta-finetuned-financial-news-sentiment-analysis",
                               truncation=True, padding=True)
         sentiment_analysis = classifier(text, top_k=3)
         return sentiment_analysis
 
-    def sentiment(self):
-        if not self.dataframe.empty:
-            self.dataframe['sentiment'] = self.dataframe.apply(lambda x: self.__sentiment_analysis(x['text_en']), axis=1)
-            log('Sentiment Analysis successfully')
-            
-    def __keywords(self, text, lang='pt'):
-        print('finding key_words...')
+    def __keywords(self, text, algo='yake', window_size=1, topn=10, lang='pt', ngram=[3]):
         if lang == 'pt':
             corpus = textacy.Corpus("pt_core_news_sm", text)
         else:
             corpus = textacy.Corpus("en_core_web_sm", text)
+
         kw_weights = Counter()
-        for doc in corpus:
-            keywords = doc._.extract_keyterms("textrank", normalize="lower", window_size=2, edge_weighting="binary",
-                                              topn=10)
-            kw_weights.update(dict(keywords))
+        i = 1
+        for n in ngram:
+            for doc in corpus:
+                i += 1
+                if algo == 'yake':
+                    keywords = doc._.extract_keyterms("yake", window_size=window_size, topn=topn, ngrams=n)
+                elif algo == 'textrank':
+                    keywords = doc._.extract_keyterms("textrank", window_size=window_size, edge_weighting="binary",
+                                                      topn=topn)
+                elif algo == 'scake':
+                    keywords = doc._.extract_keyterms("scake", topn=topn)
+                elif algo == 'sgrank':
+                    keywords = doc._.extract_keyterms("sgrank", topn=topn, window_size=window_size, ngrams=n)
+                else:
+                    print('No algorithm named ', algo, '. Please input a valid algorithm.')
+                    return {}
+                # check if the keyword is already in the counter
+                kw_weights.update(dict(keywords))
 
         # convert counter values to integers between 0 and 100
-        maximum = max(kw_weights.values())
-        minimum = min(kw_weights.values())
-        max_min = maximum - minimum
+        try:
+            maximum = max(kw_weights.values())
+            minimum = min(kw_weights.values())
+            max_min = maximum - minimum
+        except ValueError:
+            print('No keywords found. Please try again with different parameters.')
+            # print parameters
+            print(algo, window_size, topn, lang, ngram)
+            return {}
 
         for k in kw_weights.keys():
-            kw_weights[k] = round(((kw_weights[k] - minimum) / (max_min)) * 100)
+            kw_weights[k] = round(((kw_weights[k] - minimum) / max_min) * 100)
 
         # exclude items with value=0
-        return {key: val for key, val in kw_weights.items() if val > 0}
+        return sort_dict_by_value({key: val for key, val in kw_weights.items() if val > 0})
+        # return {key: val for key, val in kw_weights.items() if val > 0}
 
-    def extract_keywords(self):
-        if not self.dataframe.empty:
-            self.dataframe['kw_weights'] = self.dataframe.apply(lambda x: self.__keywords(x['text'], 'pt'), axis=1)
-            log('Most relevant keywords successfully extracted')
-            
+
     def __build_objs_sentiment(self):
         clients_data = {}
-        print("sentiment: ", self.dataframe.sentiment)
-        for c, s, d in zip(self.dataframe.clients, self.dataframe.sentiment, self.dataframe.date_scrap):
+        self.dataframe.to_pickle('while_saving_dataframe.pickle')
+        for c, s, d in zip(self.dataframe.clients, self.dataframe.sentiment, self.dataframe.date_news):
             for obj in c:
                 try:
-                    clients_data[obj['id']][s[0]['label']] += 1
+                    clients_data[obj['id']][d][s[0]['label']] += 1
                 except KeyError:
-                    clients_data[obj['id']] = {}
-                    clients_data[obj['id']]['neutral'] = 0
-                    clients_data[obj['id']]['negative'] = 0
-                    clients_data[obj['id']]['positive'] = 0
-                    clients_data[obj['id']][s[0]['label']] += 1
-                    clients_data[obj['id']]['date'] = d
+                    try:
+                        clients_data[obj['id']][d] = {}
+                        clients_data[obj['id']][d]['neutral'] = 0
+                        clients_data[obj['id']][d]['negative'] = 0
+                        clients_data[obj['id']][d]['positive'] = 0
+                        clients_data[obj['id']][d][s[0]['label']] += 1
+                    except KeyError:
+                        clients_data[obj['id']] = {}
+                        clients_data[obj['id']][d] = {}
+                        clients_data[obj['id']][d]['neutral'] = 0
+                        clients_data[obj['id']][d]['negative'] = 0
+                        clients_data[obj['id']][d]['positive'] = 0
+                        clients_data[obj['id']][d][s[0]['label']] += 1
         return clients_data
 
     def __build_data_setiment(self):
         client_data = self.__build_objs_sentiment()
         for client in client_data:
-            yield {
-                "ainfo_id": client,
-                "data": json.dumps({
-                    "positive_count": client_data[client]['positive'],
-                    "negative_count": client_data[client]['negative'],
-                    "neutral_count": client_data[client]['neutral']
-                }),
-                "year": datetime.date.today().strftime("%Y"),
-                "month": datetime.date.today().strftime("%m"),
-                "week_of_year": datetime.date.today().strftime("%W"),
-                "extracted_at": datetime.datetime.strptime(client_data[client]['date'], '%d/%m/%y').strftime('%Y-%m-%d')
-            }
+            for date in client_data[client]:
+                yield {
+                    "ainfo_id": client,
+                    "data": json.dumps({
+                        "positive_count": client_data[client][date]['positive'],
+                        "negative_count": client_data[client][date]['negative'],
+                        "neutral_count": client_data[client][date]['neutral']
+                    }),
+                    "year": datetime.date.today().strftime("%Y"),
+                    "month": datetime.date.today().strftime("%m"),
+                    "week_of_year": datetime.date.today().strftime("%W"),
+                    "extracted_at": datetime.datetime.strptime(date, '%d/%m/%y').strftime('%Y-%m-%d')
+                }
 
     def top_moods(self, moods: list, top: int):
         return moods[top]['label']
 
     def __build_obj_emotions(self):
-        self.dataframe['top1'] = self.dataframe.emotion.apply(lambda x: self.top_moods(x, 0))
-        self.dataframe['top2'] = self.dataframe.emotion.apply(lambda x: self.top_moods(x, 1))
-        self.dataframe['top3'] = self.dataframe.emotion.apply(lambda x: self.top_moods(x, 2))
         emotions = [{'label': 'neutral'},
                     {'label': 'anger'},
                     {'label': 'disgust'},
@@ -164,87 +226,105 @@ class ReputationalAnalysi:
                     {'label': 'sadness'},
                     {'label': 'surprise'}]
         clients_data = {}
-        for c, d in zip(self.dataframe.clients, self.dataframe.date_scrap):
+        for c, d, e in zip(self.dataframe.clients, self.dataframe.date_news, self.dataframe.emotion):
             for obj in c:
-                clients_data[obj['id']] = {}
-                clients_data[obj['id']]['n_texts'] = len(self.dataframe)
-                clients_data[obj['id']]['date'] = d
-                clients_data[obj['id']]['neutral'] = 0
-                clients_data[obj['id']]['anger'] = 0
-                clients_data[obj['id']]['disgust'] = 0
-                clients_data[obj['id']]['joy'] = 0
-                clients_data[obj['id']]['fear'] = 0
-                clients_data[obj['id']]['sadness'] = 0
-                clients_data[obj['id']]['surprise'] = 0
-                for emotion in emotions:
-                    clients_data[obj['id']][emotion['label']] = len(self.dataframe.where(
-                        (self.dataframe['top1'] == emotion['label']) | (self.dataframe['top2'] == emotion['label']) | (
-                                self.dataframe['top3'] == emotion['label'])).dropna())
+                try:
+                    clients_data[obj['id']][d]['n_texts'] += 1
+                    for label in e:
+                        clients_data[obj['id']][d][label['label']] += 1
+                except KeyError:
+                    try:
+                        clients_data[obj['id']][d] = {}
+                        clients_data[obj['id']][d]['n_texts'] = 1
+                        clients_data[obj['id']][d]['neutral'] = 0
+                        clients_data[obj['id']][d]['anger'] = 0
+                        clients_data[obj['id']][d]['disgust'] = 0
+                        clients_data[obj['id']][d]['joy'] = 0
+                        clients_data[obj['id']][d]['fear'] = 0
+                        clients_data[obj['id']][d]['sadness'] = 0
+                        clients_data[obj['id']][d]['surprise'] = 0
+                        for label in e:
+                            clients_data[obj['id']][d][label['label']] += 1
+                    except KeyError:
+                        clients_data[obj['id']] = {}
+                        clients_data[obj['id']][d] = {}
+                        clients_data[obj['id']][d]['n_texts'] = 1
+                        clients_data[obj['id']][d]['neutral'] = 0
+                        clients_data[obj['id']][d]['anger'] = 0
+                        clients_data[obj['id']][d]['disgust'] = 0
+                        clients_data[obj['id']][d]['joy'] = 0
+                        clients_data[obj['id']][d]['fear'] = 0
+                        clients_data[obj['id']][d]['sadness'] = 0
+                        clients_data[obj['id']][d]['surprise'] = 0
+                        for label in e:
+                            clients_data[obj['id']][d][label['label']] += 1
         return clients_data
 
     def __build_data_emotion(self):
         client_data = self.__build_obj_emotions()
-        print(client_data)
         for client in client_data:
-            yield {
-                'ainfo_id': client,
-                'data': json.dumps({
-                    'n_tweets': client_data[client]['n_texts'],
-                    'neutral_count': client_data[client]['neutral'],
-                    'neutral_percent': round(client_data[client]['neutral'] / client_data[client]['n_texts'], 2),
-                    'anger_count': client_data[client]['anger'],
-                    'anger_percent': round(client_data[client]['anger'] / client_data[client]['n_texts'], 2),
-                    'disgust_count': client_data[client]['disgust'],
-                    'disgust_percent': round(client_data[client]['disgust'] / client_data[client]['n_texts'], 2),
-                    'joy_count': client_data[client]['joy'],
-                    'joy_percent': round(client_data[client]['joy'] / client_data[client]['n_texts'], 2),
-                    'fear_count': client_data[client]['fear'],
-                    'fear_percent': round(client_data[client]['fear'] / client_data[client]['n_texts'], 2),
-                    'sadness_count': client_data[client]['sadness'],
-                    'sadness_percent': round(client_data[client]['sadness'] / client_data[client]['n_texts'], 2),
-                    'surprise_count': client_data[client]['surprise'],
-                    'surprise_percent': round(client_data[client]['surprise'] / client_data[client]['n_texts'], 2),
-                }),
-                "year": datetime.date.today().strftime("%Y"),
-                "month": datetime.date.today().strftime("%m"),
-                "week_of_year": datetime.date.today().strftime("%W"),
-                "extracted_at": datetime.datetime.strptime(client_data[client]['date'], '%d/%m/%y').strftime('%Y-%m-%d')
-            }
+            for date in client_data[client]:
+                yield {
+                    'ainfo_id': client,
+                    'data': json.dumps({
+                        'n_tweets': client_data[client][date]['n_texts'],
+                        'neutral_count': client_data[client][date]['neutral'],
+                        'neutral_percent': round(
+                            client_data[client][date]['neutral'] / client_data[client][date]['n_texts'], 2),
+                        'anger_count': client_data[client][date]['anger'],
+                        'anger_percent': round(
+                            client_data[client][date]['anger'] / client_data[client][date]['n_texts'], 2),
+                        'disgust_count': client_data[client][date]['disgust'],
+                        'disgust_percent': round(
+                            client_data[client][date]['disgust'] / client_data[client][date]['n_texts'], 2),
+                        'joy_count': client_data[client][date]['joy'],
+                        'joy_percent': round(client_data[client][date]['joy'] / client_data[client][date]['n_texts'],
+                                             2),
+                        'fear_count': client_data[client][date]['fear'],
+                        'fear_percent': round(client_data[client][date]['fear'] / client_data[client][date]['n_texts'],
+                                              2),
+                        'sadness_count': client_data[client][date]['sadness'],
+                        'sadness_percent': round(
+                            client_data[client][date]['sadness'] / client_data[client][date]['n_texts'], 2),
+                        'surprise_count': client_data[client][date]['surprise'],
+                        'surprise_percent': round(
+                            client_data[client][date]['surprise'] / client_data[client][date]['n_texts'], 2),
+                    }),
+                    "year": datetime.date.today().strftime("%Y"),
+                    "month": datetime.date.today().strftime("%m"),
+                    "week_of_year": datetime.date.today().strftime("%W"),
+                    "extracted_at": datetime.datetime.strptime(date, '%d/%m/%y').strftime('%Y-%m-%d')
+                }
 
-    # %%
     def __build_objs_kw(self):
         clients_data = {}
-        for c, s, d in zip(self.dataframe.clients, self.dataframe.kw_weights, self.dataframe.date_scrap):
+        for c, s, d in zip(self.dataframe.clients, self.dataframe.kw_weights, self.dataframe.date_news):
             for obj in c:
                 try:
-                    clients_data[obj['id']]['kw'].append(s)
+                    clients_data[obj['id']][d].append(s)
                 except KeyError:
-                    clients_data[obj['id']] = {}
-                    clients_data[obj['id']]['kw'] = [s]
-                    clients_data[obj['id']]['date'] = d
-        for client in clients_data:
-            final_dict = {}
-            final_dict['n_analysis'] = 0
-            final_dict['id'] = client
-            final_dict['kw'] = {}
-            final_dict['date'] = clients_data[client]['date']
-            for dictionary in clients_data[client]['kw']:
-                for kw in dictionary:
                     try:
-                        final_dict['kw'][kw] += dictionary[kw]
+                        clients_data[obj['id']][d] = [s]
                     except KeyError:
-                        final_dict['kw'][kw] = dictionary[kw]
-                final_dict['n_analysis'] += 1
-            yield final_dict
+                        clients_data[obj['id']] = {}
+                        clients_data[obj['id']][d] = [s]
 
-    def __build_top_kw(self, temp):
-        top_kw = {}
-        for t in temp:
-            if t[1] < 25:
-                break
-            if len(t[0]) > 3:
-                top_kw[t[0]] = t[1]
-        return top_kw
+        for client in clients_data:
+            for date in clients_data[client]:
+                final_dict = {}
+                final_dict['n_analysis'] = 0
+                final_dict['id'] = client
+                final_dict['kw'] = {}
+                final_dict['date'] = date
+                for dictionary in clients_data[client][date]:
+                    for kw in dictionary:
+                        try:
+                            final_dict['kw'][kw] += dictionary[kw]
+                        except KeyError:
+                            final_dict['kw'][kw] = dictionary[kw]
+                    final_dict['n_analysis'] += 1
+                final_dict['kw'] = sort_dict_by_value(final_dict['kw'])
+                yield final_dict
 
     def __build_data_kw(self):
         client_data = list(self.__build_objs_kw())
@@ -252,18 +332,22 @@ class ReputationalAnalysi:
             for k in d['kw']:
                 d['kw'][k] /= d['n_analysis']
             try:
+                to_del = []
                 maximum = max(d['kw'].values())
                 minimum = min(d['kw'].values())
                 max_min = maximum - minimum
                 for k in d['kw']:
                     d['kw'][k] = round(((d['kw'][k] - minimum) / max_min) * 100)
+                    if d['kw'][k] < 5:
+                        to_del.append(k)
+                for k in to_del:
+                    del d['kw'][k]
             except ValueError:
                 continue
         for client in client_data:
-            temp = sorted(client['kw'].items(), key=lambda item: item[1], reverse=True)
             yield {
                 "ainfo_id": client['id'],
-                "data": json.dumps({"kw_weights": self.__build_top_kw(temp)}),
+                "data": json.dumps({"kw_weights": client['kw']}),
                 "year": datetime.date.today().strftime("%Y"),
                 "month": datetime.date.today().strftime("%m"),
                 "week_of_year": datetime.date.today().strftime("%W"),
@@ -272,7 +356,8 @@ class ReputationalAnalysi:
             }
 
     def save(self):
-        if self.dataframe.empty:
+        if not len(self.dataframe):
+            print('No data to save')
             return
         analysis = [
             list(self.__build_data_setiment()),
@@ -286,55 +371,80 @@ class ReputationalAnalysi:
         ]
         headers = {'Accept': 'application/json',
                    'Content-Type': 'application/json',
-                   'Authorization': 'Bearer 2|IIvhcPW0VLmm11NXAuEVOxQMI1GLdyJ8cUntGzBB',
+                   'Authorization': 'Bearer 3|7XOfemJabZDyJCCtOzZgpomqU8JMRl4gRADZ1HZp',
                    'X-Tenant': self.tenant}
-
-        # self.dataframe.to_pickle("analise_feita.pickle")
 
         for raw_url, analysi in zip(post_links, analysis):
             for result in analysi:
                 data = json.dumps(result)
                 print(data)
                 response = requests.post(raw_url, headers=headers, data=data)
-                print(response.status_code)
-                print(response.json())
+                print(response.status_code, response.content)
+                time.sleep(1.25)
 
     def filter_search_terms(self, text):
         clients = []
         for client in self.clients:
-            for term in client["search_terms"]:
-                if term.lower() in text.lower():
-                    clients.append(client)
-                    break
+            if all(term.lower() in text.lower() for term in client["search_terms"]):
+                clients.append(client)
         return clients
 
-    def load_file(self, files):
-        self.dataframe = pd.DataFrame(columns=["title", "text", "date_news", "date_scrap", "url", "lang", "clients"])
-        
+    def check_if_already_analysed(self):
+        rows_to_drop = []
+        if not len(self.dataframe) or not len(self.global_dataframe):
+            return
+        for index, row in self.dataframe.iterrows():
+            if row['raw_text'] in self.global_dataframe['raw_text'].values:
+                analyzed_row = self.global_dataframe[self.global_dataframe['raw_text'] == row['raw_text']].copy()
+                analyzed_row['clients'] = [row['clients']]
+                self.processed_dataframe = pd.concat([self.processed_dataframe, analyzed_row], axis=0)
+                rows_to_drop.append(index)
+        for index in rows_to_drop:
+            self.dataframe.drop(index, inplace=True)
+
+
+    def load_file(self, files, max_articles=None):
+        self.dataframe = pd.DataFrame(
+            columns=["raw_title", "raw_text", "date_news", "date_scrap", "url", "lang", "clients"])
         for file in files:
-            try: 
-                df = pd.read_json(file)
-                df['clients'] = df['text'].apply(self.filter_search_terms)
-                self.dataframe = pd.concat([self.dataframe, df[df['clients'].map(lambda x: len(x) > 0)]], axis=0)
-            except Exception as e:
-                print('\033[91m', 'load file:', str(e), '\033[0m')  
-        
-        try:          
-            self.dataframe['text_en'] = self.dataframe.apply(lambda x: self.translate(x['text'], x['lang']), axis=1)
-            self.dataframe['text'] = self.dataframe['text'].apply(lambda x: self.clean_text(x))
-            self.dataframe['text_en'] = self.dataframe['text_en'].apply(lambda x: self.clean_text(x))
-            self.dataframe['title_en'] = self.dataframe.apply(lambda x: self.translate(x['title'], x['lang']), axis=1)
-        except Exception as e:
-            print('\033[91m', 'dataframe:', str(e), '\033[0m')    
+            print('reading file')
+            df = pd.read_json(file)
+            df['clients'] = df['raw_text'].apply(self.filter_search_terms)
+            self.dataframe = pd.concat([self.dataframe, df[df['clients'].map(lambda x: len(x) > 0)]], axis=0)
+            if max_articles is not None and len(self.dataframe) >= max_articles:
+                self.dataframe = self.dataframe[:max_articles]
+                break
+        self.check_if_already_analysed()
+        print('preprocessing text', len(self.dataframe))
+        if len(self.dataframe) > 0:
+            self.progress_bar('Translating text.', self.__translate, 'raw_text', 'text_en')
+            self.progress_bar('Translating title.', self.__translate, 'raw_title', 'title_en')
+            self.dataframe['text'] = self.dataframe['raw_text'].apply(lambda x: self.prepocess_text(x, ['noise']))
+            self.dataframe['title'] = self.dataframe['raw_title'].apply(lambda x: self.prepocess_text(x, ['all']))
+            self.dataframe['text_en'] = self.dataframe['text_en'].apply(lambda x: self.prepocess_text(x, ['all']))
+            self.dataframe['title_en'] = self.dataframe['title_en'].apply(lambda x: self.prepocess_text(x, ['all']))
+            self.dataframe.to_pickle("processado_latest.pickle")
+
+    def do_analysis(self):
+        if len(self.dataframe) > 0:
+            self.progress_bar('Extracting keywords', self.__keywords, 'text_en', 'kw_weights')
+            self.progress_bar('Analyzing Sentiments', self.__sentiment_analysis, 'text_en', 'sentiment')
+            self.progress_bar('Analyzing Emotions', self.__find_emotions, 'text_en', 'emotion')
+            self.dataframe.to_pickle(f"analise_feita_latest__{self.tenant}.pickle")
+        new_global_dataframe = pd.concat([self.global_dataframe, self.dataframe], axis=0) if pd.concat([self.global_dataframe, self.dataframe], axis=0) is not None else pd.DataFrame(
+            columns=["raw_title", "raw_text", "date_news", "date_scrap", "url", "lang", "clients",
+                     "text_en", "title_en", "text", "title", "kw_weights", "sentiment", "emotion"])
+        self.dataframe = pd.concat([self.processed_dataframe, self.dataframe], axis=0)
+        self.save()
+        return new_global_dataframe
 
 
 if __name__ == '__main__':
     tenants = get_analysis()
-
+    global_dataframe = pd.DataFrame(
+        columns=["raw_title", "raw_text", "date_news", "date_scrap", "url", "lang", "clients",
+                 "text_en", "title_en", "text", "title", "kw_weights", "sentiment", "emotion"])
     for tenant in tenants:
-        print(tenant)
-        analysi = ReputationalAnalysi(tenant, tenants[tenant], "", "", ["data/economico.json", "data/exame.json"])
-        analysi.sentiment()
-        analysi.extract_keywords()
-        analysi.emotion()
-        analysi.save()
+        analysi = ReputationalAnalysi(tenant, tenants[tenant], ["scrapers/all/data.json"], global_dataframe)
+        global_dataframe = analysi.do_analysis()
+    os.rename("scrapers/all/data.json", "scrapers/all/previous_day_data.json")

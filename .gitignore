@@ -1,7 +1,0 @@
-notebooks/.ipynb_checkpoints/
-.vscode/
-
-__pycache__/
-config.py
-get_twitter_data_local.py
-kw_extraction_local.py
