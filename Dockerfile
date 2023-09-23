@@ -7,6 +7,14 @@ WORKDIR .
 ENV API_URL="https://esg-maturity.com"
 ENV BEARER_TOKEN="Bearer 3|7XOfemJabZDyJCCtOzZgpomqU8JMRl4gRADZ1HZp"
 
+# Set the locale
+RUN apt-get update && apt-get install -y locales && rm -rf /var/lib/apt/lists/* \
+       && sed -i -e 's/# pt_PT.UTF-8 UTF-8/pt_PT.UTF-8 UTF-8/' /etc/locale.gen \
+       && locale-gen
+
+# install cron
+RUN apt-get update && apt-get -y install cron
+
 # Copy the current directory contents into the container at /app
 COPY scrapers scrapers
 COPY requirements.txt .
@@ -18,13 +26,6 @@ COPY reputational_analysi.py .
 RUN pip install -r requirements.txt
 
 RUN python -m spacy download pt_core_news_sm
-
-RUN apt-get update && apt-get install -y locales && rm -rf /var/lib/apt/lists/* \
-       && sed -i -e 's/# pt_PT.UTF-8 UTF-8/pt_PT.UTF-8 UTF-8/' /etc/locale.gen \
-       && locale-gen
-
-# install cron
-RUN apt-get -y install cron
 
 # Create cron to run everyday at 2am
 RUN echo "0 2 * * * root /bin/bash /run.sh >> /var/log/cron.log 2>&1" >> /etc/cron.d/cronjob
