@@ -23,6 +23,14 @@ RUN apt-get update && apt-get install -y locales && rm -rf /var/lib/apt/lists/* 
        && sed -i -e 's/# pt_PT.UTF-8 UTF-8/pt_PT.UTF-8 UTF-8/' /etc/locale.gen \
        && locale-gen
 
-ENTRYPOINT [ "/bin/bash" ]
+# install cron
+RUN apt-get -y install cron
 
-CMD [ "run.sh" ]
+# Create cron to run everyday at 2am
+RUN echo "0 2 * * * root /bin/bash /run.sh >> /var/log/cron.log 2>&1" >> /etc/cron.d/cronjob
+RUN chmod 0644 /etc/cron.d/cronjob
+RUN crontab /etc/cron.d/cronjob
+
+# at start of container list all cronjobs and
+ENTRYPOINT [ "/bin/bash" ]
+CMD service cron start && tail -f /var/log/cron.log
