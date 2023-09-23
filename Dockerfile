@@ -1,7 +1,7 @@
 FROM python:3.10.2
 
 # Set the working directory to /app
-WORKDIR .
+WORKDIR /app
 
 # Set env variables
 ENV API_URL="https://esg-maturity.com"
@@ -32,6 +32,8 @@ RUN echo "0 2 * * * root /bin/bash /run.sh >> /var/log/cron.log 2>&1" >> /etc/cr
 RUN chmod 0644 /etc/cron.d/cronjob
 RUN crontab /etc/cron.d/cronjob
 
+RUN echo "cronjob created" >> /var/log/cron.log
+
 # at start of container list all cronjobs and
-ENTRYPOINT [ "/bin/bash" ]
-CMD service cron start && tail -f /var/log/cron.log
+ENTRYPOINT [ "" ]
+CMD crontab -l && service cron start && tail -f /var/log/cron.log

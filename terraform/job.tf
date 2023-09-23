@@ -16,6 +16,9 @@ resource "ibm_code_engine_job" "queue" {
     project_id                    = ibm_code_engine_project.code-engine-project.id
     run_mode                      = "daemon"
 
+    scale_cpu_limit = "2"
+    scale_memory_limit = "8Gi"
+
     lifecycle {
         prevent_destroy = true
     }
