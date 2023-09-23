@@ -72,7 +72,7 @@ run-worker:
         IBMCLOUD_REGION: eu-de
     dependencies:
         - build
-        - development
+        - deploy
 
 .ibmcloud_login:
     before_script:
