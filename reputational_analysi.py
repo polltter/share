@@ -140,49 +140,18 @@ class ReputationalAnalysi:
         sentiment_analysis = classifier(text, top_k=3)
         return sentiment_analysis
 
-    def __keywords(self, text, algo='yake', window_size=1, topn=10, lang='pt', ngram=[3]):
+    def __keywords(self, text, algo='yake', window_size=1, topn=15, lang='pt', ngram=(1,2 ,3)):
         if lang == 'pt':
             corpus = textacy.Corpus("pt_core_news_sm", text)
         else:
             corpus = textacy.Corpus("en_core_web_sm", text)
 
         kw_weights = Counter()
-        i = 1
-        for n in ngram:
-            for doc in corpus:
-                i += 1
-                if algo == 'yake':
-                    keywords = doc._.extract_keyterms("yake", window_size=window_size, topn=topn, ngrams=n)
-                elif algo == 'textrank':
-                    keywords = doc._.extract_keyterms("textrank", window_size=window_size, edge_weighting="binary",
-                                                      topn=topn)
-                elif algo == 'scake':
-                    keywords = doc._.extract_keyterms("scake", topn=topn)
-                elif algo == 'sgrank':
-                    keywords = doc._.extract_keyterms("sgrank", topn=topn, window_size=window_size, ngrams=n)
-                else:
-                    print('No algorithm named ', algo, '. Please input a valid algorithm.')
-                    return {}
-                # check if the keyword is already in the counter
-                kw_weights.update(dict(keywords))
 
-        # convert counter values to integers between 0 and 100
-        try:
-            maximum = max(kw_weights.values())
-            minimum = min(kw_weights.values())
-            max_min = maximum - minimum
-        except ValueError:
-            print('No keywords found. Please try again with different parameters.')
-            # print parameters
-            print(algo, window_size, topn, lang, ngram)
-            return {}
+        keywords = corpus[0]._.extract_keyterms("yake", window_size=window_size, topn=topn, ngrams=ngram)
+        kw_weights.update(dict(keywords))
 
-        for k in kw_weights.keys():
-            kw_weights[k] = round(((kw_weights[k] - minimum) / max_min) * 100)
-
-        # exclude items with value=0
-        return sort_dict_by_value({key: val for key, val in kw_weights.items() if val > 0})
-        # return {key: val for key, val in kw_weights.items() if val > 0}
+        return dict(kw_weights)
 
     def __build_objs_sentiment(self):
         clients_data = {}
@@ -329,25 +298,22 @@ class ReputationalAnalysi:
                 for dictionary in clients_data[client][date]:
                     for kw in dictionary:
                         try:
-                            final_dict['kw'][kw] += dictionary[kw]
+                            final_dict['kw'][kw] *= dictionary[kw]
                         except KeyError:
                             final_dict['kw'][kw] = dictionary[kw]
                     final_dict['n_analysis'] += 1
-                final_dict['kw'] = sort_dict_by_value(final_dict['kw'])
                 yield final_dict
 
     def __build_data_kw(self):
         client_data = list(self.__build_objs_kw())
         for d in client_data:
-            for k in d['kw']:
-                d['kw'][k] /= d['n_analysis']
             try:
                 to_del = []
                 maximum = max(d['kw'].values())
                 minimum = min(d['kw'].values())
                 max_min = maximum - minimum
                 for k in d['kw']:
-                    d['kw'][k] = round(((d['kw'][k] - minimum) / max_min) * 100)
+                    d['kw'][k] = round((1 - ((d['kw'][k] - minimum) / max_min)) * 100)
                     if d['kw'][k] < 5:
                         to_del.append(k)
                 for k in to_del:
@@ -437,7 +403,7 @@ class ReputationalAnalysi:
 
     def do_analysis(self):
         if len(self.dataframe) > 0:
-            self.progress_bar('Extracting keywords', self.__keywords, 'text_en', 'kw_weights')
+            self.progress_bar('Extracting keywords', self.__keywords, 'raw_text', 'kw_weights')
             self.progress_bar('Analyzing Sentiments', self.__sentiment_analysis, 'text_en', 'sentiment')
             self.progress_bar('Analyzing Emotions', self.__find_emotions, 'text_en', 'emotion')
             self.dataframe.to_pickle(f"analise_feita_latest__{self.tenant}.pickle")
