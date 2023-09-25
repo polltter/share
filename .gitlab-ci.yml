@@ -1,0 +1,85 @@
+image: alpine:latest
+
+stages:
+    - build
+    - deploy
+
+variables:
+    TERRAFORM_ROOT_FOLDER: 'terraform'
+
+build:
+    stage: build
+    image: docker
+    services:
+        - docker:dind
+    before_script:
+        - BRANCH_NAME="${CI_COMMIT_BRANCH:-$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}"
+        - IMAGE_TAG="v$CI_COMMIT_SHA.$BRANCH_NAME.$(date +%Y-%m-%d)"
+        - echo "IMAGE_TAG=$IMAGE_TAG" >> deploy.env
+    script:
+        - echo "$REPOSITORY_ACCESS_TOKEN" | docker login -u "$REPOSITORY_ACCESS_USERNAME" --password-stdin registry.gitlab.com
+        - docker build --build-arg version=$CI_COMMIT_SHA -t $CI_REGISTRY_IMAGE:$IMAGE_TAG .
+        - docker push $CI_REGISTRY_IMAGE:$IMAGE_TAG
+        - docker tag $CI_REGISTRY_IMAGE:$IMAGE_TAG $CI_REGISTRY_IMAGE:$BRANCH_NAME-latest
+        - docker push $CI_REGISTRY_IMAGE:$BRANCH_NAME-latest
+    artifacts:
+        reports:
+            dotenv: deploy.env
+    rules:
+        - if: $CI_COMMIT_BRANCH == "container"
+
+deploy:
+    stage: deploy
+    image:
+        name: hashicorp/terraform:latest
+        entrypoint: ['']
+    rules:
+        - if: $CI_COMMIT_BRANCH == "container"
+    script:
+        - cd $TERRAFORM_ROOT_FOLDER
+        - terraform init -backend-config="username=${TF_USERNAME}" -backend-config="password=${TF_PASSWORD}"
+        - terraform plan -out deploy.out -var "ibmcloud_api_key=$IBMCLOUD_API_KEY" -var "docker_image=$CI_REGISTRY_IMAGE:$IMAGE_TAG"
+        - terraform apply -auto-approve deploy.out
+        - JOB_NAME=$(terraform output -raw job_name)
+        - echo "JOB_NAME=$JOB_NAME" >> dep.env
+        - RESOURCE_GROUP=$(terraform output -raw resource_group)
+        - echo "IBMCLOUD_GROUP=$RESOURCE_GROUP" >> dep.env
+        - CODE_ENGINE_PROJECT=$(terraform output -raw code_engine_project)
+        - echo "IBMCLOUD_PROJECT=$CODE_ENGINE_PROJECT" dep.env
+    dependencies:
+        - build
+    variables:
+        IBM_CLOUD_REGION: eu-de
+    artifacts:
+        reports:
+            dotenv: $TERRAFORM_ROOT_FOLDER/dep.env
+
+run-worker:
+    stage: deploy
+    rules:
+        - if: $CI_COMMIT_BRANCH == "container"
+    before_script:
+        - !reference [.ibmcloud_login, before_script]
+    script:
+        - !reference [.ibmcloud_login, script]
+        # if greater than 5 lines delete oldest, means there is a job running
+        - if [[ $(ibmcloud ce jr list -j "$JOB_NAME" | wc -l) -gt 5 ]]; then
+          OLDEST_JOB=$(ibmcloud ce jr list -j "$JOB_NAME" -o jsonpath='{.items[0].metadata.name}');
+          ibmcloud ce jr delete --name "$OLDEST_JOB" --force;
+          fi
+        - ibmcloud ce jr submit -j "$JOB_NAME"
+    variables:
+        IBMCLOUD_REGION: eu-de
+    dependencies:
+        - build
+        - deploy
+
+.ibmcloud_login:
+    before_script:
+        - apk --no-cache add bash curl
+        - curl -fsSL https://clis.cloud.ibm.com/install/linux | sh
+        - ibmcloud plugin install code-engine
+    script:
+        - IBMCLOUD_API_KEY=$IBMCLOUD_API_KEY ibmcloud login -r "$IBMCLOUD_REGION" -g "$IBMCLOUD_GROUP"
+        - ibmcloud ce project select -n "$IBMCLOUD_PROJECT"
+    when: manual
