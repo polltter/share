@@ -18,7 +18,8 @@ build:
         - echo "IMAGE_TAG=$IMAGE_TAG" >> deploy.env
     script:
         - echo "$REPOSITORY_ACCESS_TOKEN" | docker login -u "$REPOSITORY_ACCESS_USERNAME" --password-stdin registry.gitlab.com
-        - docker build --build-arg version=$CI_COMMIT_SHA -t $CI_REGISTRY_IMAGE:$IMAGE_TAG .
+        - docker pull $CI_REGISTRY_IMAGE:$BRANCH_NAME-latest
+        - docker build --cache-from $CI_REGISTRY_IMAGE:$BRANCH_NAME-latest --build-arg version=$CI_COMMIT_SHA -t $CI_REGISTRY_IMAGE:$IMAGE_TAG .
         - docker push $CI_REGISTRY_IMAGE:$IMAGE_TAG
         - docker tag $CI_REGISTRY_IMAGE:$IMAGE_TAG $CI_REGISTRY_IMAGE:$BRANCH_NAME-latest
         - docker push $CI_REGISTRY_IMAGE:$BRANCH_NAME-latest
