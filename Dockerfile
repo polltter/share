@@ -28,9 +28,9 @@ RUN pip install -r requirements.txt
 RUN python -m spacy download pt_core_news_sm
 
 # Create cron to run everyday at 2am
-RUN echo "0 2 * * * /bin/bash /app/run.sh >> /var/log/cron.log 2>&1" >> /etc/cron.d/cronjob
-RUN chmod 0644 /etc/cron.d/cronjob
-RUN crontab /etc/cron.d/cronjob
+# RUN echo "0 2 * * * /bin/bash /app/run.sh >> /var/log/cron.log 2>&1" >> /etc/cron.d/cronjob
+# RUN chmod 0644 /etc/cron.d/cronjob
+# RUN crontab /etc/cron.d/cronjob
 
 RUN echo "cronjob created" >> /var/log/cron.log
 
