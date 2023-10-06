@@ -4,24 +4,25 @@ from collections import defaultdict
 import os
 
 # API_URL = 'http://saas.test'
-# API_URL = 'https://esg-maturity.com'
-if os.getenv("API_URL") is not None:
-    API_URL = os.getenv("API_URL")
-    print('API_URL found ', API_URL)
-else:
-    API_URL = 'http://saas.test'
+API_URL = 'https://esg-maturity.com'
+# if os.getenv("API_URL") is not None:
+#     API_URL = os.getenv("API_URL")
+#     print('API_URL found ', API_URL)
+# else:
+#     API_URL = 'http://saas.test'
 
-if os.getenv("BEARER_TOKEN") is not None:
-    BEARER_TOKEN = os.getenv("BEARER_TOKEN")
-    print('BEARER_TOKEN found ', BEARER_TOKEN)
-else:
-    exit('BEARER_TOKEN not found')
+# if os.getenv("BEARER_TOKEN") is not None:
+#     BEARER_TOKEN = os.getenv("BEARER_TOKEN")
+#     print('BEARER_TOKEN found ', BEARER_TOKEN)
+# else:
+#     exit('BEARER_TOKEN not found')
 
 def get_tenants():
     tenants_url_dev = f"{API_URL}/api/v1/tenants/7XOfemJW0VLmm11NXAuEVOCtOzZgpomqU8JGXkqJ17EAuswHCwU2/reputation"
 
     headers = {'Accept': 'application/json',
-               'Authorization': BEARER_TOKEN}
+               # 'Authorization': BEARER_TOKEN,
+              'Authorization': 'Bearer 3|7XOfemJabZDyJCCtOzZgpomqU8JMRl4gRADZ1HZp',}
 
     response = requests.get(tenants_url_dev, headers=headers)
 
@@ -68,7 +69,8 @@ def get_analysis():
             path = "/" + str(analysis_id)
 
             headers = {'Accept': 'application/json',
-                       'Authorization': BEARER_TOKEN,
+                       # 'Authorization': BEARER_TOKEN,
+                       'Authorization': 'Bearer 3|7XOfemJabZDyJCCtOzZgpomqU8JMRl4gRADZ1HZp',
                        'X-Tenant': tenant}
 
             response = requests.get(analysis_url + path, headers=headers)
