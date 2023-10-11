@@ -18,7 +18,6 @@ RUN apt-get update && apt-get -y install cron
 # Copy the current directory contents into the container at /app
 COPY scrapers scrapers
 COPY requirements.txt .
-COPY run.sh .
 COPY get_client_info.py .
 COPY reputational_analysi.py .
 
@@ -26,6 +25,8 @@ COPY reputational_analysi.py .
 RUN pip install -r requirements.txt
 
 RUN python -m spacy download pt_core_news_sm
+
+COPY run.sh .
 
 # Create cron to run everyday at 2am
 RUN echo "0 2 * * * /bin/bash /app/run.sh >> /var/log/cron.log 2>&1" >> /etc/cron.d/cronjob
