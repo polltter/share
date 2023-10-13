@@ -18,19 +18,19 @@ from transformers import logging as transformers_logging
 
 transformers_logging.set_verbosity_error()
 textacy.set_doc_extensions("extract")
-if os.getenv("API_URL") is not None:
-    API_URL = os.getenv("API_URL")
-    print('API_URL found ', API_URL)
-else:
-    API_URL = 'http://saas.test'
+#if os.getenv("API_URL") is not None:
+#    API_URL = os.getenv("API_URL")
+#    print('API_URL found ', API_URL)
+# else:
+    # API_URL = 'http://saas.test'
 
-if os.getenv("BEARER_TOKEN") is not None:
-    BEARER_TOKEN = os.getenv("BEARER_TOKEN")
-    print('BEARER_TOKEN found ', BEARER_TOKEN)
-else:
-    exit('BEARER_TOKEN not found')
+# if os.getenv("BEARER_TOKEN") is not None:
+#     BEARER_TOKEN = os.getenv("BEARER_TOKEN")
+#     print('BEARER_TOKEN found ', BEARER_TOKEN)
+# else:
+#     exit('BEARER_TOKEN not found')
 
-# API_URL = 'https://esg-maturity.com'
+API_URL = 'https://esg-maturity.com'
 try:
     previous_day_dataframe = pd.read_json('scrapers/all/previous_day_data.json')
 except ValueError:
@@ -347,8 +347,8 @@ class ReputationalAnalysi:
         ]
         headers = {'Accept': 'application/json',
                    'Content-Type': 'application/json',
-                   'Authorization': BEARER_TOKEN,
-                   # 'Authorization': 'Bearer 3|7XOfemJabZDyJCCtOzZgpomqU8JMRl4gRADZ1HZp',
+                   # 'Authorization': BEARER_TOKEN,
+                   'Authorization': 'Bearer 3|7XOfemJabZDyJCCtOzZgpomqU8JMRl4gRADZ1HZp',
                    'X-Tenant': self.tenant}
 
         for raw_url, analysi in zip(post_links, analysis):
@@ -412,7 +412,7 @@ class ReputationalAnalysi:
             columns=["raw_title", "raw_text", "date_news", "date_scrap", "url", "lang", "clients",
                      "text_en", "title_en", "text", "title", "kw_weights", "sentiment", "emotion"])
         self.dataframe = pd.concat([self.processed_dataframe, self.dataframe], axis=0)
-        self.save()
+        # self.save()
         return new_global_dataframe
 
 
